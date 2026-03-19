@@ -210,188 +210,222 @@
         <audio id="bgm-player" crossorigin="anonymous"></audio>
     </div>
 
-    <script>
-        /**
-         * 【大師教學專區】
-         * 1. 將下面的 AUDIO_URL 替換成你在 GitHub 的 Raw 連結。
-         * 2. 瀏覽器必須要有使用者互動才能播放音樂。
-         */
-        const AUDIO_URL = "https://raw.githubusercontent.com/w8523147/demon-slayer-rhythm/main/bgm.mp3"; 
+<script>
+    // --- 1. 核心設定 ---
+    const AUDIO_URL = "https://github.com/w8523147/demon-slayer-rhythm/raw/refs/heads/main/bgm.mp3";
 
-        const CONFIG = {
-            easy: { speed: 4.5, mult: 1.0, label: '癸', color: '#00b4d8' },
-            normal: { speed: 7.5, mult: 2.0, label: '乙', color: '#ffb703' },
-            hard: { speed: 11.0, mult: 4.0, label: '柱', color: '#e63946' }
-        };
+    const CONFIG = {
+        easy: { speed: 5, mult: 1.0, label: '癸', color: '#00b4d8' },
+        normal: { speed: 8, mult: 2.0, label: '乙', color: '#ffb703' },
+        hard: { speed: 12, mult: 4.0, label: '柱', color: '#e63946' }
+    };
 
-        let currentLevel = 'easy';
-        let isPlaying = false;
-        let score = 0, combo = 0, maxCombo = 0;
-        let audioCtx, track;
+    let currentLevel = 'easy';
+    let isPlaying = false;
+    let score = 0, combo = 0, maxCombo = 0;
+    let audioCtx;
+    let gameChart = [];
 
-        // 生成隨機譜面 (示範用)
-        const generateChart = () => {
-            const chart = [];
-            for(let i=1; i<100; i++) {
-                chart.push({ time: i * (1200 - (Math.random() * 200)), lane: Math.floor(Math.random() * 4) });
-            }
-            return chart;
-        };
+    const lanes = Array.from(document.querySelectorAll('.lane'));
+    const bgm = document.getElementById('bgm-player');
+    const startBtn = document.getElementById('start-btn');
+    const audioInfo = document.getElementById('audio-info');
 
-        let gameChart = generateChart();
-        const lanes = Array.from(document.querySelectorAll('.lane'));
-        const bgm = document.getElementById('bgm-player');
-        const startBtn = document.getElementById('start-btn');
-        const audioInfo = document.getElementById('audio-info');
+    // --- 2. 譜面引擎：根據 BPM 自動計算整首歌的拍點 ---
+    const generateAutoChart = (duration) => {
+        const chart = [];
+        const bpm = 135; // 紅蓮華約為 135 BPM
+        const beatInterval = (60 / bpm) * 1000; // 每一拍約 444 毫秒
+        
+        // 從第 2 秒開始生成，直到音樂結束前 5 秒
+        for (let t = 2000; t < (duration * 1000) - 5000; t += beatInterval) {
+            chart.push({ 
+                time: t, 
+                lane: Math.floor(Math.random() * 4), 
+                active: false,
+                spawned: false 
+            });
 
-        // 初始化 Web Audio API
-        function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                track = audioCtx.createMediaElementSource(bgm);
-                track.connect(audioCtx.destination);
-            }
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-        }
-
-        // 模擬鋼琴音 (點擊反饋)
-        function playHitSound(idx) {
-            if (!audioCtx) return;
-            const freqs = [261.6, 329.6, 392.0, 523.3];
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freqs[idx], audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.2);
-        }
-
-        // 載入音訊
-        const loadMusic = () => {
-            bgm.src = AUDIO_URL;
-            bgm.load();
-            
-            bgm.oncanplaythrough = () => {
-                startBtn.disabled = false;
-                startBtn.classList.replace('bg-slate-800', 'bg-amber-600');
-                startBtn.classList.replace('text-slate-500', 'text-white');
-                startBtn.classList.add('start-anim');
-                startBtn.innerText = "全集中・開始挑戰";
-                audioInfo.innerText = "GITHUB 音律同步成功";
-            };
-
-            bgm.onerror = () => {
-                audioInfo.innerText = "GITHUB 連接失敗，請檢查 URL";
-                startBtn.disabled = false;
-                startBtn.innerText = "無音樂模式啟動";
-            };
-        };
-
-        window.setDiff = (level, btn) => {
-            currentLevel = level;
-            document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            document.getElementById('diff-tag').innerText = CONFIG[level].label;
-            document.documentElement.style.setProperty('--water-blue', CONFIG[level].color);
-        };
-
-        function startGame(withMusic = true) {
-            initAudio();
-            document.getElementById('start-screen').style.display = 'none';
-            isPlaying = true;
-            
-            if (withMusic) bgm.play();
-            
-            const startTimestamp = performance.now();
-            
-            function frame(now) {
-                if (!isPlaying) return;
-                const elapsed = now - startTimestamp;
-                
-                // 更新進度
-                if (bgm.duration) document.getElementById('progress-bar').style.width = `${(bgm.currentTime/bgm.duration)*100}%`;
-
-                const speed = CONFIG[currentLevel].speed;
-                const hitZone = window.innerHeight * 0.85;
-
-                // 生成音符
-                gameChart.forEach(n => {
-                    if (!n.active && elapsed >= n.time - (hitZone / speed * 16.6)) {
-                        const div = document.createElement('div');
-                        div.className = 'note';
-                        div.style.background = `linear-gradient(to right, #fff, ${CONFIG[currentLevel].color})`;
-                        div.style.boxShadow = `0 0 15px ${CONFIG[currentLevel].color}`;
-                        lanes[n.lane].appendChild(div);
-                        n.element = div; n.active = true;
-                    }
+            // 隨機增加雙壓音符 (增加遊戲性)
+            if (Math.random() > 0.85) {
+                chart.push({ 
+                    time: t, 
+                    lane: (Math.floor(Math.random() * 3) + 1) % 4, 
+                    active: false,
+                    spawned: false 
                 });
-
-                // 移動音符
-                document.querySelectorAll('.note').forEach(n => {
-                    let y = parseFloat(n.getAttribute('data-y')) || 0;
-                    y += speed;
-                    n.style.transform = `translateY(${y}px)`;
-                    n.setAttribute('data-y', y);
-                    if (y > window.innerHeight) { n.remove(); combo = 0; updateUI(); }
-                });
-
-                requestAnimationFrame(frame);
             }
-            requestAnimationFrame(frame);
         }
+        return chart;
+    };
 
-        function handleTap(idx) {
+    // --- 3. 音訊與初始化 ---
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    const loadMusic = () => {
+        bgm.src = AUDIO_URL;
+        bgm.load();
+        bgm.oncanplaythrough = () => {
+            startBtn.disabled = false;
+            startBtn.classList.replace('bg-slate-800', 'bg-amber-600');
+            startBtn.classList.add('start-anim');
+            startBtn.innerText = "全集中・開始挑戰";
+            audioInfo.innerText = "GITHUB 音律同步成功";
+        };
+        bgm.onerror = () => {
+            audioInfo.innerText = "音訊載入失敗，請檢查網址";
+            startBtn.disabled = false;
+            startBtn.innerText = "備用模式啟動";
+        };
+    };
+
+    // --- 4. 遊戲主循環 ---
+    function startGame(withMusic = true) {
+        initAudio();
+        document.getElementById('start-screen').style.display = 'none';
+        
+        // 取得音樂總長度並生成譜面
+        const musicDuration = bgm.duration || 240; 
+        gameChart = generateAutoChart(musicDuration);
+        
+        isPlaying = true;
+        if (withMusic) bgm.play();
+
+        function frame() {
             if (!isPlaying) return;
-            initAudio();
-            const lane = lanes[idx];
-            lane.classList.add('lane-active');
-            setTimeout(() => lane.classList.remove('lane-active'), 100);
-            playHitSound(idx);
 
-            const notes = lane.querySelectorAll('.note');
-            let hit = false;
-            notes.forEach(n => {
-                const y = parseFloat(n.getAttribute('data-y'));
-                const dist = Math.abs(y - (window.innerHeight * 0.85 - 10));
-                if (dist < 80 && !hit) {
-                    const perf = dist < 40;
-                    showJudgement(perf ? "PERFECT" : "GREAT", perf ? CONFIG[currentLevel].color : "#fff");
-                    score += (perf ? 100 : 60) * CONFIG[currentLevel].mult;
-                    combo++;
-                    n.remove(); hit = true;
+            // 【核心修復】使用 bgm.currentTime * 1000 作為絕對時間基準 (毫秒)
+            const currentTime = bgm.currentTime * 1000;
+            const speed = CONFIG[currentLevel].speed;
+            const hitZoneY = window.innerHeight * 0.85;
+
+            // 更新進度條
+            if (bgm.duration) {
+                document.getElementById('progress-bar').style.width = `${(bgm.currentTime / bgm.duration) * 100}%`;
+            }
+
+            // 計算音符從頂部到底部判定線所需的「飛行時間」
+            // 這裡的 16.6 是 60fps 下每一幀的毫秒數
+            const travelTime = hitZoneY / (speed / 16.6);
+
+            gameChart.forEach(note => {
+                // 如果現在時間到了「目標時間 - 飛行時間」，就讓音符出現
+                if (!note.spawned && currentTime >= (note.time - travelTime)) {
+                    const div = document.createElement('div');
+                    div.className = 'note';
+                    div.style.background = `linear-gradient(to right, #fff, ${CONFIG[currentLevel].color})`;
+                    div.style.boxShadow = `0 0 15px ${CONFIG[currentLevel].color}`;
+                    lanes[note.lane].appendChild(div);
+                    note.element = div;
+                    note.spawned = true;
                 }
             });
-            updateUI();
-        }
 
-        function updateUI() {
-            document.getElementById('score-display').innerText = Math.floor(score).toString().padStart(6, '0');
-            document.getElementById('combo-display').innerText = combo;
-        }
+            // 移動已經生成的音符
+            document.querySelectorAll('.note').forEach(noteEl => {
+                // 找出該 DOM 對應的譜面資料
+                const data = gameChart.find(d => d.element === noteEl);
+                if (data) {
+                    // 根據時間差精確計算位移量
+                    const timeInFlight = currentTime - (data.time - travelTime);
+                    const currentY = timeInFlight * (speed / 16.6);
+                    
+                    noteEl.style.transform = `translateY(${currentY}px)`;
+                    noteEl.setAttribute('data-y', currentY);
 
-        function showJudgement(txt, col) {
-            const el = document.getElementById('judgement');
-            el.innerText = txt; el.style.color = col; el.style.opacity = 1;
-            setTimeout(() => el.style.opacity = 0, 300);
-        }
+                    // Miss 判定 (超過判定線一段距離)
+                    if (currentY > window.innerHeight) {
+                        noteEl.remove();
+                        data.element = null; // 釋放引用
+                        combo = 0;
+                        updateUI();
+                        showJudgement("MISS", "#ff4444");
+                    }
+                }
+            });
 
-        // 事件監聽
-        lanes.forEach((l, i) => {
-            l.addEventListener('mousedown', () => handleTap(i));
-            l.addEventListener('touchstart', (e) => { e.preventDefault(); handleTap(i); });
+            if (bgm.ended) endGame();
+            requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+    }
+
+    // --- 5. 互動處理 ---
+    function handleTap(idx) {
+        if (!isPlaying) return;
+        initAudio();
+        const lane = lanes[idx];
+        lane.classList.add('lane-active');
+        setTimeout(() => lane.classList.remove('lane-active'), 100);
+
+        const notes = lane.querySelectorAll('.note');
+        let hit = false;
+        notes.forEach(n => {
+            const y = parseFloat(n.getAttribute('data-y'));
+            const hitZoneY = window.innerHeight * 0.85;
+            // 判定範圍調整 (40px 內 Perfect, 80px 內 Great)
+            const dist = Math.abs(y - (hitZoneY - 10)); 
+
+            if (dist < 80 && !hit) {
+                const isPerfect = dist < 40;
+                showJudgement(isPerfect ? "PERFECT" : "GREAT", isPerfect ? CONFIG[currentLevel].color : "#fff");
+                score += (isPerfect ? 100 : 60) * CONFIG[currentLevel].mult;
+                combo++;
+                if (combo > maxCombo) maxCombo = combo;
+                n.remove();
+                hit = true;
+            }
         });
+        updateUI();
+    }
 
-        startBtn.onclick = () => startGame(true);
-        document.getElementById('bypass-btn').onclick = () => startGame(false);
+    function updateUI() {
+        document.getElementById('score-display').innerText = Math.floor(score).toString().padStart(6, '0');
+        document.getElementById('combo-display').innerText = combo;
+    }
 
-        window.onkeydown = (e) => {
-            const keys = { 's':0, 'd':1, 'k':2, 'l':3 };
-            if (keys[e.key.toLowerCase()] !== undefined) handleTap(keys[e.key.toLowerCase()]);
-        };
+    function showJudgement(txt, col) {
+        const el = document.getElementById('judgement');
+        el.innerText = txt; el.style.color = col; el.style.opacity = 1;
+        if(window.jt) clearTimeout(window.jt);
+        window.jt = setTimeout(() => el.style.opacity = 0, 400);
+    }
 
-        window.onload = loadMusic;
-    </script>
+    function setDiff(level, btn) {
+        currentLevel = level;
+        document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('diff-tag').innerText = CONFIG[level].label;
+        document.documentElement.style.setProperty('--water-blue', CONFIG[level].color);
+    }
+
+    function endGame() {
+        isPlaying = false;
+        alert(`任務達成！\n最終分數：${Math.floor(score)}\n最大連擊：${maxCombo}`);
+        location.reload();
+    }
+
+    // 事件監聽
+    lanes.forEach((l, i) => {
+        l.addEventListener('mousedown', () => handleTap(i));
+        l.addEventListener('touchstart', (e) => { e.preventDefault(); handleTap(i); });
+    });
+
+    startBtn.onclick = () => startGame(true);
+    document.getElementById('bypass-btn').onclick = () => startGame(false);
+
+    window.onkeydown = (e) => {
+        const keys = { 's':0, 'd':1, 'k':2, 'l':3 };
+        const idx = keys[e.key.toLowerCase()];
+        if (idx !== undefined) handleTap(idx);
+    };
+
+    window.onload = loadMusic;
+</script>
 </body>
 </html>
