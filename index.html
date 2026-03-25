@@ -120,17 +120,17 @@
 
     <script>
         // --- 1. 曲目與設定 ---
-        // 【大師優化】：全面升級使用 jsDelivr CDN，解決 GitHub 跨域阻擋與緩慢問題
+        // 【大師優化】：既然已經部署到 GitHub Pages，直接使用「相對路徑」是最快且保證不會有 CORS 阻擋的方法！
         const SONGS = {
             gurenge: {
                 title: "紅蓮華",
-                url: "https://cdn.jsdelivr.net/gh/w8523147/demon-slayer-rhythm@main/bgm.mp3",
+                url: "bgm.mp3",  // 直接讀取同資料夾下的 bgm.mp3
                 bpm: 135,
                 offset: 2200 
             },
             bibi: {
                 title: "小雞嗶嗶",
-                url: "https://cdn.jsdelivr.net/gh/w8523147/demon-slayer-rhythm@main/BiBi.mp3",
+                url: "BiBi.mp3", // 直接讀取同資料夾下的 BiBi.mp3
                 bpm: 130,
                 offset: 1000 
             }
@@ -169,11 +169,11 @@
             startBtn.disabled = true;
             startBtn.innerText = "讀取音源中...";
             startBtn.classList.replace('bg-amber-600', 'bg-slate-800');
-            startBtn.classList.replace('bg-red-800', 'bg-slate-800'); // 清除錯誤顏色
+            startBtn.classList.replace('bg-red-800', 'bg-slate-800'); 
             startBtn.classList.remove('start-anim');
             
-            // 使用 CDN 直接讀取，移除干擾的亂數快取參數
-            bgm.src = SONGS[currentSongKey].url; 
+            // 使用相對路徑直接讀取，加上隨機數避免 GitHub Pages 強制快取舊檔
+            bgm.src = SONGS[currentSongKey].url + "?t=" + new Date().getTime(); 
             bgm.load();
             
             bgm.oncanplaythrough = () => {
@@ -182,14 +182,14 @@
                 startBtn.classList.replace('text-slate-500', 'text-white');
                 startBtn.classList.add('start-anim');
                 startBtn.innerText = "LINK START";
-                audioInfo.innerText = "READY TO PLAY / CDN音訊連接成功";
+                audioInfo.innerText = "READY TO PLAY / 音源就緒";
             };
 
             bgm.onerror = () => {
                 startBtn.disabled = true;
                 startBtn.classList.replace('bg-slate-800', 'bg-red-800');
                 startBtn.innerText = "讀取失敗";
-                audioInfo.innerText = "❌ 無法讀取檔案！請確認 GitHub 倉庫設定為 Public，且檔名正確。";
+                audioInfo.innerText = `❌ 找不到檔案：${SONGS[currentSongKey].url}。請確認檔名大小寫！`;
             };
         };
 
