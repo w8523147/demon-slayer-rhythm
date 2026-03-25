@@ -183,9 +183,10 @@
             hard: { color: '#e63946' }
         };
 
-        // 【大師優化】音符存在的總時間 (決定你有多少時間可以點擊)
-        // 3 拍的長度，讓節奏較為緊湊，考驗反應
-        const PRE_SPAWN_BEATS = 3; 
+        // 【大師優化】將音符提早出現的時間改為「精準的 1 個拍子」
+        // 這樣畫面上只會有 1~2 顆音符，音符出現的瞬間就是「前一拍」，收縮到底剛好是「下一拍」
+        // 完美解決打地鼠的混亂感，強迫玩家感受音樂的律動。
+        const PRE_SPAWN_BEATS = 1; 
 
         let currentSongKey = "gurenge";
         let currentLevel = 'easy';
@@ -238,7 +239,7 @@
             leadTime = beatInterval * PRE_SPAWN_BEATS;
             
             for (let t = song.offset; t < (duration * 1000) - 3000; t += beatInterval) {
-                // 安全生成主音符
+                // 安全生成主音符，落在正拍上
                 let posX, posY;
                 do {
                     posX = 15 + Math.random() * 70;
@@ -247,8 +248,9 @@
 
                 chart.push({ time: t, x: posX, y: posY, spawned: false, hit: false, element: null });
 
-                // 產生半拍連擊 (解決無法同時點擊的問題)
-                if(Math.random() > 0.6) {
+                // 【大師優化】大幅降低半拍連擊的機率 (從 60% 降到 15%)
+                // 讓節奏保持在主旋律的重拍上，避免過於雜亂
+                if(Math.random() > 0.85) {
                     let t2 = t + (beatInterval / 2); // 延後半個節拍
                     let posX2, posY2;
                     do {
@@ -301,7 +303,7 @@
                         }
                     }
 
-                    // 【修改】恢復寬容期：超過目標時間 200 毫秒還沒點擊才算 MISS (稍微給點延遲寬限)
+                    // 恢復寬容期：超過目標時間 200 毫秒還沒點擊才算 MISS (稍微給點延遲寬限)
                     if (note.spawned && !note.hit && currentTime > note.time + 200) {
                         note.hit = true;
                         combo = 0; 
@@ -349,7 +351,7 @@
             initAudio(); 
 
             const currentTime = bgm.currentTime * 1000;
-            // 【核心修改】計算玩家點擊時間與「音樂節拍點」的絕對誤差
+            // 核心修改：計算玩家點擊時間與「音樂節拍點」的絕對誤差
             const diff = Math.abs(currentTime - noteData.time);
 
             // 防呆/防亂點機制：如果提早太多點（誤差大於 250 毫秒），直接算 MISS
@@ -370,7 +372,7 @@
             let points = 0;
             let color = "";
 
-            // 【核心修改】評分標準：光圈越接近實心圓 (誤差 diff 越小) 分數越高
+            // 核心修改：評分標準：光圈越接近實心圓 (誤差 diff 越小) 分數越高
             if (diff <= 60) { 
                 rating = "PERFECT"; points = 100; color = CONFIG[currentLevel].color;
             } else if (diff <= 130) { 
