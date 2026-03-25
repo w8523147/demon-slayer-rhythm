@@ -3,429 +3,462 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>日輪之律 - 鬼滅之刃主題遊戲</title>
+    <title>日輪之律 - 掃描線模式</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&display=swap');
-
-        :root {
-            --water-blue: #00b4d8;
-            --fire-red: #e63946;
-            --thunder-yellow: #ffb703;
-            --wood-dark: #1a120b;
+        
+        :root { 
+            --water-blue: #00b4d8; 
+            --fire-red: #e63946; 
+            --thunder-yellow: #ffb703; 
+            --note-size: 80px;
         }
-
+        
         body {
-            background-color: #0c0c0c;
-            color: #f1f1f1;
-            font-family: 'Noto Serif TC', serif;
-            overflow: hidden;
-            margin: 0;
-            touch-action: none;
-            -webkit-user-select: none;
-            user-select: none;
+            background-color: #050505; color: #f1f1f1; font-family: 'Noto Serif TC', serif;
+            overflow: hidden; margin: 0; touch-action: none; user-select: none;
+            /* 背景加入稍微科幻與和風混合的網格 */
             background-image: 
-                linear-gradient(45deg, #111 25%, transparent 25%), 
-                linear-gradient(-45deg, #111 25%, transparent 25%), 
-                linear-gradient(45deg, transparent 75%, #111 75%), 
-                linear-gradient(-45deg, transparent 75%, #111 75%);
-            background-size: 80px 80px;
+                radial-gradient(circle at center, #1a1a1a 0%, #000 100%),
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 100% 100%, 40px 40px, 40px 40px;
         }
 
-        /* 遊戲軌道外殼 */
-        .lane-container {
-            display: flex;
-            width: 100%;
-            max-width: 500px;
-            height: 100dvh;
-            margin: 0 auto;
-            background: rgba(0, 0, 0, 0.95);
-            border-left: 2px solid #333;
-            border-right: 2px solid #333;
-            position: relative;
-            box-shadow: 0 0 50px rgba(0,0,0,1);
-        }
-
-        /* 全集中特效 - 水/火 */
-        .total-concentration { box-shadow: inset 0 0 60px var(--water-blue), 0 0 30px var(--water-blue); }
-        .total-concentration-fire { box-shadow: inset 0 0 60px var(--fire-red), 0 0 30px var(--fire-red); }
-
-        .lane {
-            flex: 1;
-            position: relative;
-            border-right: 1px dashed rgba(255,255,255,0.05);
-        }
-
-        /* 敲擊按鈕樣式 */
-        .hit-button {
+        /* 遊戲區域 */
+        #play-area {
             position: absolute;
-            bottom: 5vh;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 80%;
-            aspect-ratio: 1;
+            top: 0; left: 0; right: 0; bottom: 0;
+            overflow: hidden;
+        }
+
+        /* 掃描線 */
+        #scanline {
+            position: absolute;
+            left: 0; right: 0; height: 3px;
+            background: #fff;
+            box-shadow: 0 0 20px 5px var(--water-blue), 0 0 40px var(--water-blue);
+            z-index: 50;
+            pointer-events: none;
+            will-change: top;
+        }
+
+        /* Cytus 風格音符 */
+        .cytus-note {
+            position: absolute;
+            width: var(--note-size);
+            height: var(--note-size);
+            transform: translate(-50%, -50%); /* 中心點對齊座標 */
             border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.2);
-            background: rgba(26, 18, 11, 0.8);
+            z-index: 40;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
-            font-weight: 900;
-            color: rgba(255,255,255,0.3);
-            z-index: 50;
-            transition: all 0.1s;
+            /* 出現時的縮放動畫 */
+            animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
-        .lane-active .hit-button {
-            transform: translateX(-50%) scale(0.9);
-            background: var(--water-blue);
-            border-color: #fff;
-            color: #fff;
-            box-shadow: 0 0 40px var(--water-blue);
+        @keyframes pop-in {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
 
-        /* 斬擊效果 */
-        .slash-effect {
-            position: absolute;
-            bottom: 15vh;
-            left: -20%;
-            width: 140%;
-            height: 4px;
+        /* 音符內部實體 */
+        .note-inner {
+            width: 40%; height: 40%;
+            border-radius: 50%;
             background: #fff;
-            box-shadow: 0 0 20px #fff, 0 0 40px var(--water-blue);
-            transform: scaleX(0);
-            opacity: 0;
-            z-index: 45;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 0 15px rgba(255,255,255,0.8);
+            z-index: 2;
             pointer-events: none;
         }
-        .lane-active .slash-effect { animation: slash 0.15s ease-out forwards; }
-        @keyframes slash {
-            0% { transform: scaleX(0); opacity: 1; }
-            100% { transform: scaleX(1); opacity: 0; }
-        }
 
-        /* 音符樣式 */
-        .note {
+        /* 音符外部光圈 (時間指示器) */
+        .note-ring {
             position: absolute;
-            width: 90%;
-            left: 5%;
-            height: 20px;
-            border-radius: 4px;
-            z-index: 40;
-            will-change: transform;
+            width: 100%; height: 100%;
+            border-radius: 50%;
+            border: 4px solid var(--water-blue);
+            box-sizing: border-box;
+            opacity: 0.8;
+            pointer-events: none;
+            /* 光圈會從大縮小到音符邊緣，透過 JS 控制動畫 */
+            transform: scale(1.8);
+            transition: transform linear;
         }
 
-        .hit-zone-bar {
+        /* 擊中時的特效 */
+        .note-hit-effect {
             position: absolute;
-            bottom: 15vh;
-            width: 100%;
-            height: 2px;
-            background: rgba(255, 255, 255, 0.3);
-            z-index: 35;
+            width: var(--note-size); height: var(--note-size);
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            background: var(--water-blue);
+            z-index: 39; pointer-events: none;
+            animation: hit-blast 0.4s ease-out forwards;
+        }
+        @keyframes hit-blast {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+            100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
         }
 
-        .glass-ui {
-            background: rgba(26, 18, 11, 0.95);
-            border: 1px solid #c0a080;
-            backdrop-filter: blur(10px);
-        }
-
-        .judgement-text {
+        /* 獨立浮現的判定文字 (出現在按下的音符旁) */
+        .local-judgement {
             position: absolute;
-            top: 35%;
-            width: 100%;
-            text-align: center;
-            font-size: 4rem;
+            transform: translate(-50%, -100%);
+            font-size: 1.5rem;
             font-weight: 900;
-            z-index: 100;
-            pointer-events: none;
-            transition: opacity 0.1s;
+            text-shadow: 0 0 10px rgba(0,0,0,0.8);
+            z-index: 100; pointer-events: none;
+            animation: float-up 0.5s ease-out forwards;
+        }
+        @keyframes float-up {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(0.8); }
+            50% { transform: translate(-50%, -100%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -150%) scale(1); }
         }
 
+        /* UI 層 */
+        .glass-ui { background: rgba(10, 10, 10, 0.85); border: 1px solid #444; backdrop-filter: blur(10px); }
+        .diff-btn { border: 1px solid #c0a080; padding: 6px 10px; font-size: 0.7rem; color: #c0a080; border-radius: 4px; transition: 0.3s; }
+        .diff-btn.active { background: #c0a080; color: #1a120b; font-weight: 900; }
         .start-anim { animation: pulse 1.5s infinite; }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.8; }
-        }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
     </style>
 </head>
 <body>
 
-    <!-- 頂部進度條 -->
-    <div id="progress-bar" class="fixed top-0 left-0 h-1 bg-amber-500 z-[100] transition-all duration-300" style="width: 0%"></div>
-
-    <div id="game-container" class="relative w-full h-screen overflow-hidden">
-        <!-- 分數 UI -->
-        <div class="absolute top-4 left-4 glass-ui p-4 rounded shadow-2xl z-50">
-            <div class="text-[10px] text-amber-500 tracking-[0.2em] font-bold">BREATHING SCORE</div>
-            <div id="score-display" class="text-4xl font-black text-white italic">000000</div>
-            <div class="flex items-center gap-2 mt-1">
-                <span class="text-xs font-bold text-sky-400">COMBO: <span id="combo-display">0</span></span>
-                <span id="diff-tag" class="text-[10px] bg-amber-900/50 px-2 py-0.5 rounded border border-amber-700">癸</span>
-            </div>
-        </div>
-
-        <!-- 遊戲軌道 -->
-        <div class="lane-container" id="main-track">
-            <div class="lane" data-idx="0"><div class="hit-button">S</div><div class="slash-effect"></div></div>
-            <div class="lane" data-idx="1"><div class="hit-button">D</div><div class="slash-effect"></div></div>
-            <div class="lane" data-idx="2"><div class="hit-button">K</div><div class="slash-effect"></div></div>
-            <div class="lane" data-idx="3"><div class="hit-button">L</div><div class="slash-effect"></div></div>
-            <div class="hit-zone-bar"></div>
-        </div>
-
-        <!-- 判定文字 -->
-        <div id="judgement" class="judgement-text opacity-0">PERFECT</div>
-
-        <!-- 開始畫面 -->
-        <div id="start-screen" class="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-black/90 p-8 text-center">
-            <div class="mb-12">
-                <h2 class="text-amber-600 text-sm tracking-[0.6em] mb-2">DEMON SLAYER RHYTHM</h2>
-                <h1 class="text-6xl font-black text-white italic border-b-8 border-amber-800 pb-4">日輪之律</h1>
-            </div>
-
-            <div class="glass-ui p-8 rounded-xl w-full max-w-md shadow-2xl">
-                <div class="mb-6">
-                    <p class="text-amber-100/60 text-xs mb-2">選擇呼吸難度</p>
-                    <div class="flex justify-center gap-3">
-                        <button class="diff-btn active" onclick="setDiff('easy', this)">癸 (水)</button>
-                        <button class="diff-btn" onclick="setDiff('normal', this)">乙 (雷)</button>
-                        <button class="diff-btn" onclick="setDiff('hard', this)">柱 (炎)</button>
-                    </div>
-                </div>
-
-                <button id="start-btn" disabled class="w-full bg-slate-800 text-slate-500 font-black py-5 rounded-lg text-xl transition-all shadow-lg border-b-4 border-slate-900">
-                    鎹鴉召喚音律中...
-                </button>
-                <p id="audio-info" class="text-amber-700 text-[10px] mt-4 font-bold uppercase tracking-widest">Connecting to GitHub Repository...</p>
-            </div>
-            
-            <button id="bypass-btn" class="mt-8 text-xs text-slate-500 underline opacity-50 hover:opacity-100">
-                如果長時間未載入，點此強制啟動 (無音樂模式)
-            </button>
-        </div>
-
-        <!-- 音訊元件 -->
-        <audio id="bgm-player" crossorigin="anonymous"></audio>
+    <!-- 遊戲主舞台 -->
+    <div id="play-area">
+        <div id="scanline"></div>
     </div>
 
-<script>
-    // --- 1. 核心設定 ---
-    const AUDIO_URL = "https://raw.githubusercontent.com/w8523147/demon-slayer-rhythm/main/bgm.mp3";
+    <!-- UI 面板 -->
+    <div class="absolute top-4 left-4 glass-ui p-4 rounded shadow-2xl z-50 pointer-events-none">
+        <div class="flex items-center gap-3">
+            <div>
+                <div class="text-[10px] text-amber-500 tracking-[0.2em] font-bold">SCORE</div>
+                <div id="score-display" class="text-3xl font-black text-white italic">000000</div>
+            </div>
+            <div class="border-l border-gray-600 pl-3">
+                <div class="text-[10px] text-sky-400 tracking-[0.2em] font-bold">COMBO</div>
+                <div id="combo-display" class="text-3xl font-black text-white">0</div>
+            </div>
+        </div>
+    </div>
 
-    const CONFIG = {
-        easy: { speed: 5, mult: 1.0, label: '癸', color: '#00b4d8' },
-        normal: { speed: 8, mult: 2.0, label: '乙', color: '#ffb703' },
-        hard: { speed: 12, mult: 4.0, label: '柱', color: '#e63946' }
-    };
+    <!-- 開始選單 -->
+    <div id="start-screen" class="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-black/95 p-8 text-center">
+        <h2 class="text-amber-600 text-sm tracking-[0.8em] mb-2">CYTUS STYLE RHYTHM</h2>
+        <h1 class="text-6xl font-black text-white italic border-b-4 border-amber-800 pb-2 mb-8">日輪之律</h1>
 
-    let currentLevel = 'easy';
-    let isPlaying = false;
-    let score = 0, combo = 0, maxCombo = 0;
-    let audioCtx;
-    let gameChart = [];
+        <div class="glass-ui p-6 rounded-xl w-full max-w-sm shadow-2xl">
+            <div class="mb-4 text-left">
+                <p class="text-amber-100/60 text-[10px] mb-1 uppercase tracking-widest">Select Song</p>
+                <select id="song-select" class="bg-black/50 border border-amber-900 text-white text-sm p-3 w-full rounded outline-none focus:border-amber-500"></select>
+            </div>
 
-    const lanes = Array.from(document.querySelectorAll('.lane'));
-    const bgm = document.getElementById('bgm-player');
-    const startBtn = document.getElementById('start-btn');
-    const audioInfo = document.getElementById('audio-info');
+            <div class="mb-6 text-left">
+                <p class="text-amber-100/60 text-[10px] mb-1 uppercase tracking-widest">Difficulty</p>
+                <div class="flex justify-between gap-2">
+                    <button class="diff-btn active flex-1" onclick="setDiff('easy', this)">癸 (水)</button>
+                    <button class="diff-btn flex-1" onclick="setDiff('normal', this)">乙 (雷)</button>
+                    <button class="diff-btn flex-1" onclick="setDiff('hard', this)">柱 (炎)</button>
+                </div>
+            </div>
 
-    // --- 2. 譜面引擎：根據 BPM 自動計算整首歌的拍點 ---
-    const generateAutoChart = (duration) => {
-        const chart = [];
-        const bpm = 135; // 紅蓮華約為 135 BPM
-        const beatInterval = (60 / bpm) * 1000; // 每一拍約 444 毫秒
-        
-        // 從第 2 秒開始生成，直到音樂結束前 5 秒
-        for (let t = 2000; t < (duration * 1000) - 5000; t += beatInterval) {
-            chart.push({ 
-                time: t, 
-                lane: Math.floor(Math.random() * 4), 
-                active: false,
-                spawned: false 
-            });
+            <button id="start-btn" disabled class="w-full bg-slate-800 text-slate-500 font-black py-4 rounded-lg text-lg transition-all border-b-4 border-slate-900">
+                連接音律網路中...
+            </button>
+            <p id="audio-info" class="text-amber-700 text-[9px] mt-4 font-bold tracking-tighter">WAITING...</p>
+        </div>
+    </div>
 
-            // 隨機增加雙壓音符 (增加遊戲性)
-            if (Math.random() > 0.85) {
+    <audio id="bgm-player" crossorigin="anonymous"></audio>
+
+    <script>
+        // --- 1. 曲目與設定 ---
+        const SONGS = {
+            gurenge: {
+                title: "紅蓮華 (Piano Ver.)",
+                url: "https://github.com/w8523147/demon-slayer-rhythm/raw/refs/heads/main/bgm.mp3",
+                bpm: 135,
+                offset: 2200 
+            }
+        };
+
+        const CONFIG = {
+            easy: { color: '#00b4d8' },
+            normal: { color: '#ffb703' },
+            hard: { color: '#e63946' }
+        };
+
+        // 核心掃描線參數：決定一頁(由上到下)要花幾個「拍子」
+        // Cytus 通常是 4 拍或 2 拍一頁
+        const BEATS_PER_PAGE = 4; 
+
+        let currentSongKey = "gurenge";
+        let currentLevel = 'easy';
+        let isPlaying = false;
+        let score = 0, combo = 0, maxCombo = 0;
+        let audioCtx;
+        let gameChart = [];
+        let pageDuration = 0; // 一頁掃描所需毫秒數
+
+        const playArea = document.getElementById('play-area');
+        const scanline = document.getElementById('scanline');
+        const bgm = document.getElementById('bgm-player');
+        const startBtn = document.getElementById('start-btn');
+        const audioInfo = document.getElementById('audio-info');
+
+        // --- 2. 初始化選單 ---
+        const initUI = () => {
+            const select = document.getElementById('song-select');
+            select.innerHTML = Object.keys(SONGS).map(k => `<option value="${k}">${SONGS[k].title}</option>`).join('');
+            select.onchange = (e) => { currentSongKey = e.target.value; loadMusic(); };
+        };
+
+        const loadMusic = () => {
+            startBtn.disabled = true;
+            startBtn.innerText = "讀取音源中...";
+            startBtn.classList.replace('bg-amber-600', 'bg-slate-800');
+            bgm.src = SONGS[currentSongKey].url;
+            bgm.load();
+            bgm.oncanplaythrough = () => {
+                startBtn.disabled = false;
+                startBtn.classList.replace('bg-slate-800', 'bg-amber-600');
+                startBtn.classList.replace('text-slate-500', 'text-white');
+                startBtn.classList.add('start-anim');
+                startBtn.innerText = "LINK START";
+                audioInfo.innerText = "READY TO PLAY";
+            };
+        };
+
+        function setDiff(level, btn) {
+            currentLevel = level;
+            document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.documentElement.style.setProperty('--water-blue', CONFIG[level].color);
+        }
+
+        // --- 3. 譜面引擎 (Cytus 邏輯) ---
+        const generateCytusChart = (duration) => {
+            const chart = [];
+            const song = SONGS[currentSongKey];
+            const beatInterval = (60 / song.bpm) * 1000;
+            pageDuration = beatInterval * BEATS_PER_PAGE;
+            
+            // 生成音符
+            for (let t = song.offset; t < (duration * 1000) - 3000; t += beatInterval) {
+                // X 座標限制在 15% ~ 85% 之間避免超出螢幕
+                const posX = 15 + Math.random() * 70;
+                
+                // 【核心魔法】計算音符的絕對 Y 座標
+                // 根據時間 t 落在掃描線週期的哪裡，決定它在畫面上的 Y 軸位置
+                const totalProgress = t / pageDuration;
+                const pageCycle = Math.floor(totalProgress); // 第幾頁 (偶數向下，奇數向上)
+                const pagePhase = totalProgress - pageCycle; // 0.0 ~ 1.0 的進度
+                
+                // 如果是偶數頁 (往下掃)，Y 是由小變大；如果是奇數頁 (往上掃)，Y 是由大變小
+                const posY = (pageCycle % 2 === 0) ? pagePhase * 100 : (1 - pagePhase) * 100;
+
                 chart.push({ 
                     time: t, 
-                    lane: (Math.floor(Math.random() * 3) + 1) % 4, 
-                    active: false,
-                    spawned: false 
+                    x: posX, 
+                    y: posY, 
+                    spawned: false, 
+                    hit: false,
+                    element: null
                 });
-            }
-        }
-        return chart;
-    };
 
-    // --- 3. 音訊與初始化 ---
-    function initAudio() {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-    }
-
-    const loadMusic = () => {
-        bgm.src = AUDIO_URL;
-        bgm.load();
-        bgm.oncanplaythrough = () => {
-            startBtn.disabled = false;
-            startBtn.classList.replace('bg-slate-800', 'bg-amber-600');
-            startBtn.classList.add('start-anim');
-            startBtn.innerText = "全集中・開始挑戰";
-            audioInfo.innerText = "GITHUB 音律同步成功";
-        };
-        bgm.onerror = () => {
-            audioInfo.innerText = "音訊載入失敗，請檢查網址";
-            startBtn.disabled = false;
-            startBtn.innerText = "備用模式啟動";
-        };
-    };
-
-    // --- 4. 遊戲主循環 ---
-    function startGame(withMusic = true) {
-        initAudio();
-        document.getElementById('start-screen').style.display = 'none';
-        
-        // 取得音樂總長度並生成譜面
-        const musicDuration = bgm.duration || 240; 
-        gameChart = generateAutoChart(musicDuration);
-        
-        isPlaying = true;
-        if (withMusic) bgm.play();
-
-        function frame() {
-            if (!isPlaying) return;
-
-            // 【核心修復】使用 bgm.currentTime * 1000 作為絕對時間基準 (毫秒)
-            const currentTime = bgm.currentTime * 1000;
-            const speed = CONFIG[currentLevel].speed;
-            const hitZoneY = window.innerHeight * 0.85;
-
-            // 更新進度條
-            if (bgm.duration) {
-                document.getElementById('progress-bar').style.width = `${(bgm.currentTime / bgm.duration) * 100}%`;
-            }
-
-            // 計算音符從頂部到底部判定線所需的「飛行時間」
-            // 這裡的 16.6 是 60fps 下每一幀的毫秒數
-            const travelTime = hitZoneY / (speed / 16.6);
-
-            gameChart.forEach(note => {
-                // 如果現在時間到了「目標時間 - 飛行時間」，就讓音符出現
-                if (!note.spawned && currentTime >= (note.time - travelTime)) {
-                    const div = document.createElement('div');
-                    div.className = 'note';
-                    div.style.background = `linear-gradient(to right, #fff, ${CONFIG[currentLevel].color})`;
-                    div.style.boxShadow = `0 0 15px ${CONFIG[currentLevel].color}`;
-                    lanes[note.lane].appendChild(div);
-                    note.element = div;
-                    note.spawned = true;
+                // 隨機雙按
+                if(Math.random() > 0.85) {
+                    const posX2 = 15 + Math.random() * 70;
+                    chart.push({ time: t, x: posX2, y: posY, spawned: false, hit: false, element: null });
                 }
-            });
+            }
+            return chart;
+        };
 
-            // 移動已經生成的音符
-            document.querySelectorAll('.note').forEach(noteEl => {
-                // 找出該 DOM 對應的譜面資料
-                const data = gameChart.find(d => d.element === noteEl);
-                if (data) {
-                    // 根據時間差精確計算位移量
-                    const timeInFlight = currentTime - (data.time - travelTime);
-                    const currentY = timeInFlight * (speed / 16.6);
-                    
-                    noteEl.style.transform = `translateY(${currentY}px)`;
-                    noteEl.setAttribute('data-y', currentY);
+        // --- 4. 遊戲主循環 ---
+        function startGame() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
 
-                    // Miss 判定 (超過判定線一段距離)
-                    if (currentY > window.innerHeight) {
-                        noteEl.remove();
-                        data.element = null; // 釋放引用
-                        combo = 0;
-                        updateUI();
-                        showJudgement("MISS", "#ff4444");
+            document.getElementById('start-screen').style.display = 'none';
+            // 清除之前的節點 (若有)
+            document.querySelectorAll('.cytus-note').forEach(e => e.remove());
+            score = 0; combo = 0; updateUI();
+
+            gameChart = generateCytusChart(bgm.duration || 180);
+            isPlaying = true;
+            bgm.play();
+
+            function frame() {
+                if (!isPlaying) return;
+                const currentTime = bgm.currentTime * 1000;
+
+                // 1. 更新掃描線位置
+                const totalProgress = currentTime / pageDuration;
+                const pageCycle = Math.floor(totalProgress);
+                const pagePhase = totalProgress - pageCycle;
+                const currentLineY = (pageCycle % 2 === 0) ? pagePhase * 100 : (1 - pagePhase) * 100;
+                scanline.style.top = `${currentLineY}%`;
+
+                // 掃描線顏色隨著難度變化
+                scanline.style.boxShadow = `0 0 20px 5px ${CONFIG[currentLevel].color}, 0 0 40px ${CONFIG[currentLevel].color}`;
+
+                // 2. 音符生成與狀態管理
+                gameChart.forEach(note => {
+                    // 出現時機：提前 1 頁的時間出現在畫面上讓玩家準備
+                    const spawnTime = note.time - pageDuration;
+
+                    // 生成音符
+                    if (!note.spawned && currentTime >= spawnTime && currentTime < note.time) {
+                        spawnNote(note);
                     }
-                }
-            });
 
-            if (bgm.ended) endGame();
+                    // 更新音符外環動畫 (Shrinking ring)
+                    if (note.spawned && !note.hit && note.element) {
+                        const ring = note.element.querySelector('.note-ring');
+                        if(ring) {
+                            // 計算距離擊打時間的比例，從 1.8 縮到 1.0
+                            let timeLeft = note.time - currentTime;
+                            let ringScale = 1.0 + (timeLeft / pageDuration) * 0.8;
+                            ringScale = Math.max(1.0, Math.min(1.8, ringScale));
+                            ring.style.transform = `scale(${ringScale})`;
+                        }
+                    }
+
+                    // Miss 判定：時間超過目標時間 150 毫秒還沒打
+                    if (note.spawned && !note.hit && currentTime > note.time + 150) {
+                        note.hit = true;
+                        combo = 0; 
+                        updateUI();
+                        showJudgement(note.x, note.y, "MISS", "#ff4444");
+                        if(note.element) {
+                            note.element.style.opacity = '0.3';
+                            note.element.style.transform = `translate(-50%, -50%) scale(0.8)`;
+                            setTimeout(() => note.element.remove(), 200);
+                        }
+                    }
+                });
+
+                if (bgm.ended) endGame();
+                requestAnimationFrame(frame);
+            }
             requestAnimationFrame(frame);
         }
-        requestAnimationFrame(frame);
-    }
 
-    // --- 5. 互動處理 ---
-    function handleTap(idx) {
-        if (!isPlaying) return;
-        initAudio();
-        const lane = lanes[idx];
-        lane.classList.add('lane-active');
-        setTimeout(() => lane.classList.remove('lane-active'), 100);
+        // --- 5. 繪製與互動 ---
+        function spawnNote(noteData) {
+            const div = document.createElement('div');
+            div.className = 'cytus-note';
+            div.style.left = `${noteData.x}%`;
+            div.style.top = `${noteData.y}%`;
+            
+            // 隨難度改變外環顏色
+            div.innerHTML = `
+                <div class="note-ring" style="border-color: ${CONFIG[currentLevel].color}"></div>
+                <div class="note-inner"></div>
+            `;
+            
+            playArea.appendChild(div);
+            noteData.element = div;
+            noteData.spawned = true;
 
-        const notes = lane.querySelectorAll('.note');
-        let hit = false;
-        notes.forEach(n => {
-            const y = parseFloat(n.getAttribute('data-y'));
-            const hitZoneY = window.innerHeight * 0.85;
-            // 判定範圍調整 (40px 內 Perfect, 80px 內 Great)
-            const dist = Math.abs(y - (hitZoneY - 10)); 
+            // 綁定點擊/觸控事件
+            // 使用 pointerdown 可以同時支援滑鼠與觸控螢幕
+            div.addEventListener('pointerdown', (e) => {
+                e.preventDefault(); 
+                handleHit(noteData);
+            });
+        }
 
-            if (dist < 80 && !hit) {
-                const isPerfect = dist < 40;
-                showJudgement(isPerfect ? "PERFECT" : "GREAT", isPerfect ? CONFIG[currentLevel].color : "#fff");
-                score += (isPerfect ? 100 : 60) * CONFIG[currentLevel].mult;
-                combo++;
-                if (combo > maxCombo) maxCombo = combo;
-                n.remove();
-                hit = true;
+        function handleHit(noteData) {
+            if (!isPlaying || noteData.hit) return;
+            
+            // 確保有聲音互動反饋
+            initAudio(); 
+
+            const currentTime = bgm.currentTime * 1000;
+            // 計算誤差 (絕對值)
+            const diff = Math.abs(currentTime - noteData.time);
+
+            noteData.hit = true;
+            
+            let rating = "";
+            let points = 0;
+            let color = "";
+
+            if (diff < 80) { // Perfect
+                rating = "PERFECT"; points = 100; color = CONFIG[currentLevel].color;
+            } else if (diff < 150) { // Great
+                rating = "GREAT"; points = 50; color = "#ffffff";
+            } else { // 點太早或太晚算 Miss
+                combo = 0; updateUI(); showJudgement(noteData.x, noteData.y, "MISS", "#ff4444");
+                noteData.element.remove();
+                return;
             }
-        });
-        updateUI();
-    }
 
-    function updateUI() {
-        document.getElementById('score-display').innerText = Math.floor(score).toString().padStart(6, '0');
-        document.getElementById('combo-display').innerText = combo;
-    }
+            // 加分與連擊
+            score += points;
+            combo++;
+            if (combo > maxCombo) maxCombo = combo;
+            updateUI();
 
-    function showJudgement(txt, col) {
-        const el = document.getElementById('judgement');
-        el.innerText = txt; el.style.color = col; el.style.opacity = 1;
-        if(window.jt) clearTimeout(window.jt);
-        window.jt = setTimeout(() => el.style.opacity = 0, 400);
-    }
+            // 視覺特效：擊碎動畫與局部判定文字
+            showJudgement(noteData.x, noteData.y, rating, color);
+            createHitEffect(noteData.x, noteData.y, color);
 
-    function setDiff(level, btn) {
-        currentLevel = level;
-        document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('diff-tag').innerText = CONFIG[level].label;
-        document.documentElement.style.setProperty('--water-blue', CONFIG[level].color);
-    }
+            // 移除原本的音符
+            noteData.element.remove();
+        }
 
-    function endGame() {
-        isPlaying = false;
-        alert(`任務達成！\n最終分數：${Math.floor(score)}\n最大連擊：${maxCombo}`);
-        location.reload();
-    }
+        function createHitEffect(x, y, color) {
+            const effect = document.createElement('div');
+            effect.className = 'note-hit-effect';
+            effect.style.left = `${x}%`;
+            effect.style.top = `${y}%`;
+            effect.style.background = color;
+            playArea.appendChild(effect);
+            setTimeout(() => effect.remove(), 400);
+        }
 
-    // 事件監聽
-    lanes.forEach((l, i) => {
-        l.addEventListener('mousedown', () => handleTap(i));
-        l.addEventListener('touchstart', (e) => { e.preventDefault(); handleTap(i); });
-    });
+        function showJudgement(x, y, txt, col) {
+            const el = document.createElement('div');
+            el.className = 'local-judgement';
+            el.style.left = `${x}%`;
+            el.style.top = `${y}%`;
+            el.style.color = col;
+            el.innerText = txt;
+            playArea.appendChild(el);
+            setTimeout(() => el.remove(), 500);
+        }
 
-    startBtn.onclick = () => startGame(true);
-    document.getElementById('bypass-btn').onclick = () => startGame(false);
+        function updateUI() {
+            document.getElementById('score-display').innerText = Math.floor(score).toString().padStart(6, '0');
+            document.getElementById('combo-display').innerText = combo;
+        }
 
-    window.onkeydown = (e) => {
-        const keys = { 's':0, 'd':1, 'k':2, 'l':3 };
-        const idx = keys[e.key.toLowerCase()];
-        if (idx !== undefined) handleTap(idx);
-    };
+        function endGame() {
+            isPlaying = false;
+            alert(`任務達成！\n總分：${score}\n最高連擊：${maxCombo}`);
+            location.reload();
+        }
 
-    window.onload = loadMusic;
-</script>
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        startBtn.onclick = startGame;
+        initUI();
+        loadMusic();
+
+    </script>
 </body>
 </html>
