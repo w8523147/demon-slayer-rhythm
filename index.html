@@ -33,17 +33,6 @@
             overflow: hidden;
         }
 
-        /* 掃描線 */
-        #scanline {
-            position: absolute;
-            left: 0; right: 0; height: 3px;
-            background: #fff;
-            box-shadow: 0 0 20px 5px var(--water-blue), 0 0 40px var(--water-blue);
-            z-index: 50;
-            pointer-events: none;
-            will-change: top;
-        }
-
         /* Cytus 風格音符 */
         .cytus-note {
             position: absolute;
@@ -132,7 +121,6 @@
 
     <!-- 遊戲主舞台 -->
     <div id="play-area">
-        <div id="scanline"></div>
     </div>
 
     <!-- UI 面板 -->
@@ -195,9 +183,8 @@
             hard: { color: '#e63946' }
         };
 
-        // 核心掃描線參數：決定一頁(由上到下)要花幾個「拍子」
-        // Cytus 通常是 4 拍或 2 拍一頁
-        const BEATS_PER_PAGE = 4; 
+        // 音符提早幾個拍子出現 (決定引導環縮小所需的時間)
+        const PRE_SPAWN_BEATS = 4; 
 
         let currentSongKey = "gurenge";
         let currentLevel = 'easy';
@@ -205,10 +192,9 @@
         let score = 0, combo = 0, maxCombo = 0;
         let audioCtx;
         let gameChart = [];
-        let pageDuration = 0; // 一頁掃描所需毫秒數
+        let leadTime = 0; // 音符提早出現的毫秒數
 
         const playArea = document.getElementById('play-area');
-        const scanline = document.getElementById('scanline');
         const bgm = document.getElementById('bgm-player');
         const startBtn = document.getElementById('start-btn');
         const audioInfo = document.getElementById('audio-info');
@@ -243,26 +229,22 @@
             document.documentElement.style.setProperty('--water-blue', CONFIG[level].color);
         }
 
-        // --- 3. 譜面引擎 (Cytus 邏輯) ---
-        const generateCytusChart = (duration) => {
+        // --- 3. 譜面引擎 (純引導環點擊模式) ---
+        const generateHitChart = (duration) => {
             const chart = [];
             const song = SONGS[currentSongKey];
             const beatInterval = (60 / song.bpm) * 1000;
-            pageDuration = beatInterval * BEATS_PER_PAGE;
+            leadTime = beatInterval * PRE_SPAWN_BEATS;
             
             // 生成音符
             for (let t = song.offset; t < (duration * 1000) - 3000; t += beatInterval) {
-                // X 座標限制在 15% ~ 85% 之間避免超出螢幕
-                const posX = 15 + Math.random() * 70;
                 
-                // 【核心魔法】計算音符的絕對 Y 座標
-                // 根據時間 t 落在掃描線週期的哪裡，決定它在畫面上的 Y 軸位置
-                const totalProgress = t / pageDuration;
-                const pageCycle = Math.floor(totalProgress); // 第幾頁 (偶數向下，奇數向上)
-                const pagePhase = totalProgress - pageCycle; // 0.0 ~ 1.0 的進度
-                
-                // 如果是偶數頁 (往下掃)，Y 是由小變大；如果是奇數頁 (往上掃)，Y 是由大變小
-                const posY = (pageCycle % 2 === 0) ? pagePhase * 100 : (1 - pagePhase) * 100;
+                // 取得安全的隨機座標 (避開左上角 UI 區域)
+                let posX, posY;
+                do {
+                    posX = 15 + Math.random() * 70; // 15% ~ 85%
+                    posY = 15 + Math.random() * 70; // 15% ~ 85%
+                } while (posX < 45 && posY < 25); // 如果落在左上角，就重新生成
 
                 chart.push({ 
                     time: t, 
@@ -275,8 +257,14 @@
 
                 // 隨機雙按
                 if(Math.random() > 0.85) {
-                    const posX2 = 15 + Math.random() * 70;
-                    chart.push({ time: t, x: posX2, y: posY, spawned: false, hit: false, element: null });
+                    let posX2, posY2;
+                    do {
+                        posX2 = 15 + Math.random() * 70;
+                        posY2 = 15 + Math.random() * 70;
+                    // 避開 UI，且避開第一顆音符的位置，避免重疊太近
+                    } while ((posX2 < 45 && posY2 < 25) || (Math.abs(posX2 - posX) < 15 && Math.abs(posY2 - posY) < 15));
+                    
+                    chart.push({ time: t, x: posX2, y: posY2, spawned: false, hit: false, element: null });
                 }
             }
             return chart;
@@ -292,7 +280,7 @@
             document.querySelectorAll('.cytus-note').forEach(e => e.remove());
             score = 0; combo = 0; updateUI();
 
-            gameChart = generateCytusChart(bgm.duration || 180);
+            gameChart = generateHitChart(bgm.duration || 180);
             isPlaying = true;
             bgm.play();
 
@@ -300,20 +288,10 @@
                 if (!isPlaying) return;
                 const currentTime = bgm.currentTime * 1000;
 
-                // 1. 更新掃描線位置
-                const totalProgress = currentTime / pageDuration;
-                const pageCycle = Math.floor(totalProgress);
-                const pagePhase = totalProgress - pageCycle;
-                const currentLineY = (pageCycle % 2 === 0) ? pagePhase * 100 : (1 - pagePhase) * 100;
-                scanline.style.top = `${currentLineY}%`;
-
-                // 掃描線顏色隨著難度變化
-                scanline.style.boxShadow = `0 0 20px 5px ${CONFIG[currentLevel].color}, 0 0 40px ${CONFIG[currentLevel].color}`;
-
-                // 2. 音符生成與狀態管理
+                // 1. 音符生成與狀態管理
                 gameChart.forEach(note => {
-                    // 出現時機：提前 1 頁的時間出現在畫面上讓玩家準備
-                    const spawnTime = note.time - pageDuration;
+                    // 出現時機：提前設定好的 leadTime 出現
+                    const spawnTime = note.time - leadTime;
 
                     // 生成音符
                     if (!note.spawned && currentTime >= spawnTime && currentTime < note.time) {
@@ -324,10 +302,10 @@
                     if (note.spawned && !note.hit && note.element) {
                         const ring = note.element.querySelector('.note-ring');
                         if(ring) {
-                            // 計算距離擊打時間的比例，從 1.8 縮到 1.0
+                            // 計算距離擊打時間的比例，將光圈從 2.5 縮到 1.0 (貼齊邊緣)
                             let timeLeft = note.time - currentTime;
-                            let ringScale = 1.0 + (timeLeft / pageDuration) * 0.8;
-                            ringScale = Math.max(1.0, Math.min(1.8, ringScale));
+                            let ringScale = 1.0 + (timeLeft / leadTime) * 1.5;
+                            ringScale = Math.max(1.0, Math.min(2.5, ringScale));
                             ring.style.transform = `scale(${ringScale})`;
                         }
                     }
