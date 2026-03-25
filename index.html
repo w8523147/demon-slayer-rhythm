@@ -116,22 +116,23 @@
         <button onclick="endGame(true)" class="w-64 bg-slate-800 text-slate-400 font-black py-4 rounded-lg text-lg hover:bg-slate-700 transition-colors">放棄任務</button>
     </div>
 
-    <audio id="bgm-player" crossorigin="anonymous"></audio>
+    <audio id="bgm-player"></audio>
 
     <script>
         // --- 1. 曲目與設定 ---
+        // 【大師優化】：全面升級使用 jsDelivr CDN，解決 GitHub 跨域阻擋與緩慢問題
         const SONGS = {
             gurenge: {
                 title: "紅蓮華",
-                url: "https://raw.githubusercontent.com/w8523147/demon-slayer-rhythm/main/bgm.mp3",
+                url: "https://cdn.jsdelivr.net/gh/w8523147/demon-slayer-rhythm@main/bgm.mp3",
                 bpm: 135,
                 offset: 2200 
             },
             bibi: {
                 title: "小雞嗶嗶",
-                url: "https://github.com/w8523147/demon-slayer-rhythm/raw/refs/heads/main/BiBi.mp3",
-                bpm: 130, // 小雞嗶嗶節奏估算值，可視情況微調
-                offset: 1000 // 讓第一顆音符對齊開頭的偏移量
+                url: "https://cdn.jsdelivr.net/gh/w8523147/demon-slayer-rhythm@main/BiBi.mp3",
+                bpm: 130,
+                offset: 1000 
             }
         };
 
@@ -146,7 +147,7 @@
         let currentSongKey = "gurenge";
         let currentLevel = 'easy';
         let isPlaying = false;
-        let isPaused = false; // 新增暫停狀態
+        let isPaused = false; 
         let score = 0, combo = 0, maxCombo = 0;
         let audioCtx;
         let gameChart = [];
@@ -168,17 +169,27 @@
             startBtn.disabled = true;
             startBtn.innerText = "讀取音源中...";
             startBtn.classList.replace('bg-amber-600', 'bg-slate-800');
+            startBtn.classList.replace('bg-red-800', 'bg-slate-800'); // 清除錯誤顏色
             startBtn.classList.remove('start-anim');
             
-            bgm.src = SONGS[currentSongKey].url;
+            // 使用 CDN 直接讀取，移除干擾的亂數快取參數
+            bgm.src = SONGS[currentSongKey].url; 
             bgm.load();
+            
             bgm.oncanplaythrough = () => {
                 startBtn.disabled = false;
                 startBtn.classList.replace('bg-slate-800', 'bg-amber-600');
                 startBtn.classList.replace('text-slate-500', 'text-white');
                 startBtn.classList.add('start-anim');
                 startBtn.innerText = "LINK START";
-                audioInfo.innerText = "READY TO PLAY";
+                audioInfo.innerText = "READY TO PLAY / CDN音訊連接成功";
+            };
+
+            bgm.onerror = () => {
+                startBtn.disabled = true;
+                startBtn.classList.replace('bg-slate-800', 'bg-red-800');
+                startBtn.innerText = "讀取失敗";
+                audioInfo.innerText = "❌ 無法讀取檔案！請確認 GitHub 倉庫設定為 Public，且檔名正確。";
             };
         };
 
@@ -204,7 +215,6 @@
             }
         }
 
-        // 綁定 Esc 鍵作為暫停快捷鍵
         document.addEventListener('keydown', (e) => {
             if (e.key === "Escape" && isPlaying) togglePause();
         });
@@ -253,8 +263,6 @@
             gameChart = generateHitChart(bgm.duration || 180);
             isPlaying = true;
 
-            // 【重點修改】設定難易度對應的音訊播放倍率！
-            // preservesPitch 保持原本音調，不會變成花栗鼠的聲音
             bgm.playbackRate = CONFIG[currentLevel].speedRate;
             bgm.preservesPitch = true;
             bgm.play();
@@ -262,7 +270,6 @@
             function frame() {
                 if (!isPlaying) return;
 
-                // 若暫停，略過這幀的所有邏輯，等待下次更新
                 if (isPaused) {
                     requestAnimationFrame(frame);
                     return;
@@ -329,7 +336,6 @@
         }
 
         function handleHit(noteData) {
-            // 防止在暫停狀態下偷點擊音符
             if (!isPlaying || isPaused || noteData.hit) return;
             initAudio(); 
 
