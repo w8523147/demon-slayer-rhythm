@@ -46,7 +46,7 @@
             align-items: center;
             justify-content: center;
             /* 出現時的縮放動畫 */
-            animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            animation: pop-in 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
         @keyframes pop-in {
@@ -64,7 +64,7 @@
             pointer-events: none;
         }
 
-        /* 音符外部光圈 (時間指示器) */
+        /* 音符外部光圈 (改為倒數計時指示器) */
         .note-ring {
             position: absolute;
             width: 100%; height: 100%;
@@ -74,7 +74,7 @@
             opacity: 0.8;
             pointer-events: none;
             /* 光圈會從大縮小到音符邊緣，透過 JS 控制動畫 */
-            transform: scale(1.8);
+            transform: scale(2.5);
             transition: transform linear;
         }
 
@@ -139,7 +139,7 @@
 
     <!-- 開始選單 -->
     <div id="start-screen" class="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-black/95 p-8 text-center">
-        <h2 class="text-amber-600 text-sm tracking-[0.8em] mb-2">CYTUS STYLE RHYTHM</h2>
+        <h2 class="text-amber-600 text-sm tracking-[0.8em] mb-2">REACTION STYLE RHYTHM</h2>
         <h1 class="text-6xl font-black text-white italic border-b-4 border-amber-800 pb-2 mb-8">日輪之律</h1>
 
         <div class="glass-ui p-6 rounded-xl w-full max-w-sm shadow-2xl">
@@ -183,8 +183,9 @@
             hard: { color: '#e63946' }
         };
 
-        // 音符提早幾個拍子出現 (決定引導環縮小所需的時間)
-        const PRE_SPAWN_BEATS = 4; 
+        // 【大師優化】音符存在的總時間 (決定你有多少時間可以點擊)
+        // 3 拍的長度，讓節奏較為緊湊，考驗反應
+        const PRE_SPAWN_BEATS = 3; 
 
         let currentSongKey = "gurenge";
         let currentLevel = 'easy';
@@ -192,7 +193,7 @@
         let score = 0, combo = 0, maxCombo = 0;
         let audioCtx;
         let gameChart = [];
-        let leadTime = 0; // 音符提早出現的毫秒數
+        let leadTime = 0; // 音符倒數計時的總毫秒數
 
         const playArea = document.getElementById('play-area');
         const bgm = document.getElementById('bgm-player');
@@ -229,44 +230,37 @@
             document.documentElement.style.setProperty('--water-blue', CONFIG[level].color);
         }
 
-        // --- 3. 譜面引擎 (純引導環點擊模式) ---
+        // --- 3. 譜面引擎 ---
         const generateHitChart = (duration) => {
             const chart = [];
             const song = SONGS[currentSongKey];
             const beatInterval = (60 / song.bpm) * 1000;
             leadTime = beatInterval * PRE_SPAWN_BEATS;
             
-            // 生成音符
             for (let t = song.offset; t < (duration * 1000) - 3000; t += beatInterval) {
-                
-                // 取得安全的隨機座標 (避開左上角 UI 區域)
+                // 安全生成主音符
                 let posX, posY;
                 do {
-                    posX = 15 + Math.random() * 70; // 15% ~ 85%
-                    posY = 15 + Math.random() * 70; // 15% ~ 85%
-                } while (posX < 45 && posY < 25); // 如果落在左上角，就重新生成
+                    posX = 15 + Math.random() * 70;
+                    posY = 15 + Math.random() * 70;
+                } while (posX < 45 && Math.abs(posY) < 25);
 
-                chart.push({ 
-                    time: t, 
-                    x: posX, 
-                    y: posY, 
-                    spawned: false, 
-                    hit: false,
-                    element: null
-                });
+                chart.push({ time: t, x: posX, y: posY, spawned: false, hit: false, element: null });
 
-                // 隨機雙按
-                if(Math.random() > 0.85) {
+                // 產生半拍連擊 (解決無法同時點擊的問題)
+                if(Math.random() > 0.6) {
+                    let t2 = t + (beatInterval / 2); // 延後半個節拍
                     let posX2, posY2;
                     do {
                         posX2 = 15 + Math.random() * 70;
                         posY2 = 15 + Math.random() * 70;
-                    // 避開 UI，且避開第一顆音符的位置，避免重疊太近
-                    } while ((posX2 < 45 && posY2 < 25) || (Math.abs(posX2 - posX) < 15 && Math.abs(posY2 - posY) < 15));
+                    } while ((posX2 < 45 && posY2 < 25) || (Math.abs(posX2 - posX) < 20 && Math.abs(posY2 - posY) < 20));
                     
-                    chart.push({ time: t, x: posX2, y: posY2, spawned: false, hit: false, element: null });
+                    chart.push({ time: t2, x: posX2, y: posY2, spawned: false, hit: false, element: null });
                 }
             }
+
+            chart.sort((a, b) => a.time - b.time);
             return chart;
         };
 
@@ -276,7 +270,6 @@
             if (audioCtx.state === 'suspended') audioCtx.resume();
 
             document.getElementById('start-screen').style.display = 'none';
-            // 清除之前的節點 (若有)
             document.querySelectorAll('.cytus-note').forEach(e => e.remove());
             score = 0; combo = 0; updateUI();
 
@@ -288,9 +281,7 @@
                 if (!isPlaying) return;
                 const currentTime = bgm.currentTime * 1000;
 
-                // 1. 音符生成與狀態管理
                 gameChart.forEach(note => {
-                    // 出現時機：提前設定好的 leadTime 出現
                     const spawnTime = note.time - leadTime;
 
                     // 生成音符
@@ -298,11 +289,11 @@
                         spawnNote(note);
                     }
 
-                    // 更新音符外環動畫 (Shrinking ring)
+                    // 更新外環動畫 (當作倒數計時器)
                     if (note.spawned && !note.hit && note.element) {
                         const ring = note.element.querySelector('.note-ring');
                         if(ring) {
-                            // 計算距離擊打時間的比例，將光圈從 2.5 縮到 1.0 (貼齊邊緣)
+                            // 計算剩餘時間比例，將光圈從 2.5 縮到 1.0
                             let timeLeft = note.time - currentTime;
                             let ringScale = 1.0 + (timeLeft / leadTime) * 1.5;
                             ringScale = Math.max(1.0, Math.min(2.5, ringScale));
@@ -310,8 +301,8 @@
                         }
                     }
 
-                    // Miss 判定：時間超過目標時間 150 毫秒還沒打
-                    if (note.spawned && !note.hit && currentTime > note.time + 150) {
+                    // 【修改】恢復寬容期：超過目標時間 200 毫秒還沒點擊才算 MISS (稍微給點延遲寬限)
+                    if (note.spawned && !note.hit && currentTime > note.time + 200) {
                         note.hit = true;
                         combo = 0; 
                         updateUI();
@@ -337,7 +328,6 @@
             div.style.left = `${noteData.x}%`;
             div.style.top = `${noteData.y}%`;
             
-            // 隨難度改變外環顏色
             div.innerHTML = `
                 <div class="note-ring" style="border-color: ${CONFIG[currentLevel].color}"></div>
                 <div class="note-inner"></div>
@@ -347,8 +337,7 @@
             noteData.element = div;
             noteData.spawned = true;
 
-            // 綁定點擊/觸控事件
-            // 使用 pointerdown 可以同時支援滑鼠與觸控螢幕
+            // 支援滑鼠與觸控
             div.addEventListener('pointerdown', (e) => {
                 e.preventDefault(); 
                 handleHit(noteData);
@@ -357,13 +346,23 @@
 
         function handleHit(noteData) {
             if (!isPlaying || noteData.hit) return;
-            
-            // 確保有聲音互動反饋
             initAudio(); 
 
             const currentTime = bgm.currentTime * 1000;
-            // 計算誤差 (絕對值)
+            // 【核心修改】計算玩家點擊時間與「音樂節拍點」的絕對誤差
             const diff = Math.abs(currentTime - noteData.time);
+
+            // 防呆/防亂點機制：如果提早太多點（誤差大於 250 毫秒），直接算 MISS
+            if (diff > 250) {
+                noteData.hit = true;
+                combo = 0;
+                updateUI();
+                showJudgement(noteData.x, noteData.y, "MISS", "#ff4444");
+                noteData.element.style.opacity = '0.3';
+                noteData.element.style.transform = `translate(-50%, -50%) scale(0.8)`;
+                setTimeout(() => noteData.element.remove(), 200);
+                return;
+            }
 
             noteData.hit = true;
             
@@ -371,27 +370,23 @@
             let points = 0;
             let color = "";
 
-            if (diff < 80) { // Perfect
+            // 【核心修改】評分標準：光圈越接近實心圓 (誤差 diff 越小) 分數越高
+            if (diff <= 60) { 
                 rating = "PERFECT"; points = 100; color = CONFIG[currentLevel].color;
-            } else if (diff < 150) { // Great
+            } else if (diff <= 130) { 
                 rating = "GREAT"; points = 50; color = "#ffffff";
-            } else { // 點太早或太晚算 Miss
-                combo = 0; updateUI(); showJudgement(noteData.x, noteData.y, "MISS", "#ff4444");
-                noteData.element.remove();
-                return;
+            } else { 
+                rating = "GOOD"; points = 30; color = "#aaaaaa";
             }
 
-            // 加分與連擊
             score += points;
             combo++;
             if (combo > maxCombo) maxCombo = combo;
             updateUI();
 
-            // 視覺特效：擊碎動畫與局部判定文字
             showJudgement(noteData.x, noteData.y, rating, color);
             createHitEffect(noteData.x, noteData.y, color);
 
-            // 移除原本的音符
             noteData.element.remove();
         }
 
