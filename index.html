@@ -79,23 +79,29 @@
             border-top: 2px dashed rgba(255,255,255,0.6);
         }
 
-        /* 鋼琴單擊方塊 (黑色 ＋ 白色亮框 ＋ 圓形標記) */
+        /* 鋼琴單擊方塊 (黑色 ＋ 白色強對比框 ＋ 亮粉雙端邊線) */
         .piano-tile {
             position: absolute; width: 100%; 
             background: var(--tile-black);
             z-index: 20; will-change: transform;
-            border: 2px solid #222;
+            border: 3px solid #ffffff;          /* 明亮的白色邊框，徹底切斷相連感 */
+            border-top: 5px solid #f43f5e;       /* 霓虹玫瑰紅頂部裝飾線 */
+            border-bottom: 5px solid #f43f5e;    /* 霓虹玫瑰紅底部裝飾線 */
             box-sizing: border-box;
-            border-radius: 12px;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+            border-radius: 16px;                 /* 圓角化提升視覺獨立感 */
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5), inset 0 0 10px rgba(255,255,255,0.1);
+            overflow: hidden;                    /* 確保內嵌元素不會超出圓角 */
         }
 
-        /* 鋼琴長按方塊 (紫色漸層 ＋ 立體亮色邊框) */
+        /* 鋼琴長按方塊 (紫色漸層 ＋ 白色強對比框 ＋ 霓虹紫裝飾線) */
         .piano-tile.long-tile {
             background: linear-gradient(to bottom, var(--tile-long) 0%, var(--tile-long-dark) 100%);
-            border: 3px solid #c4b5fd;
-            border-bottom: 8px solid #3b0764;
-            box-shadow: inset 0 0 15px rgba(255,255,255,0.3), 0 6px 15px rgba(139, 92, 246, 0.4);
+            border: 3px solid #ffffff;          /* 亮眼白色外邊框 */
+            border-top: 5px solid #c4b5fd;       /* 明亮紫色頂部線 */
+            border-bottom: 10px solid #3b0764;   /* 加厚重力感深紫底部 */
+            box-shadow: inset 0 0 15px rgba(255,255,255,0.3), 0 8px 18px rgba(139, 92, 246, 0.45);
+            border-radius: 16px;
+            overflow: hidden;
         }
 
         /* 方塊被成功按住時的科技藍綠發光狀態 */
@@ -103,6 +109,8 @@
             background: var(--tile-active) !important;
             box-shadow: inset 0 0 20px rgba(255,255,255,0.8), 0 0 25px var(--tile-active) !important;
             border-color: #fff !important;
+            border-top-color: #fff !important;
+            border-bottom-color: #fff !important;
         }
 
         /* 點擊漣漪波紋 */
@@ -662,6 +670,23 @@
             osc.stop(audioCtx.currentTime + 0.35);
         }
 
+        // --- 7. 事件監聽設定 ---
+        lanesDOM.forEach((lane, idx) => {
+            lane.addEventListener('pointerdown', (e) => { e.preventDefault(); handlePress(idx); });
+            lane.addEventListener('pointerup', (e) => { e.preventDefault(); handleRelease(idx); });
+            lane.addEventListener('pointerleave', (e) => { e.preventDefault(); handleRelease(idx); });
+        });
+
+        window.addEventListener('keydown', (e) => {
+            const keys = { 's':0, 'd':1, 'k':2, 'l':3 };
+            if (keys[e.key.toLowerCase()] !== undefined && !e.repeat) handlePress(keys[e.key.toLowerCase()]);
+            if (e.key === "Escape" && isPlaying) togglePause();
+        });
+        window.addEventListener('keyup', (e) => {
+            const keys = { 's':0, 'd':1, 'k':2, 'l':3 };
+            if (keys[e.key.toLowerCase()] !== undefined) handleRelease(keys[e.key.toLowerCase()]);
+        });
+
         function updateUI() {
             document.getElementById('score-display').innerText = score;
             document.getElementById('combo-display').innerText = combo;
@@ -683,23 +708,6 @@
         function initAudioCtx() { 
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); 
         }
-
-        // --- 7. 事件監聽設定 ---
-        lanesDOM.forEach((lane, idx) => {
-            lane.addEventListener('pointerdown', (e) => { e.preventDefault(); handlePress(idx); });
-            lane.addEventListener('pointerup', (e) => { e.preventDefault(); handleRelease(idx); });
-            lane.addEventListener('pointerleave', (e) => { e.preventDefault(); handleRelease(idx); });
-        });
-
-        window.addEventListener('keydown', (e) => {
-            const keys = { 's':0, 'd':1, 'k':2, 'l':3 };
-            if (keys[e.key.toLowerCase()] !== undefined && !e.repeat) handlePress(keys[e.key.toLowerCase()]);
-            if (e.key === "Escape" && isPlaying) togglePause();
-        });
-        window.addEventListener('keyup', (e) => {
-            const keys = { 's':0, 'd':1, 'k':2, 'l':3 };
-            if (keys[e.key.toLowerCase()] !== undefined) handleRelease(keys[e.key.toLowerCase()]);
-        });
 
         startBtn.onclick = startGame;
         initUI();
