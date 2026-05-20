@@ -153,14 +153,12 @@
 
     <div id="game-wrapper">
         
-        <!-- 【左側說明板】大螢幕專用，常駐顯示，設計精美 -->
         <div class="hidden lg:flex flex-col w-72 glass-ui p-6 mr-6 select-none max-h-[90vh] overflow-y-auto">
             <h2 class="text-2xl font-black text-pink-600 border-b-2 border-pink-200 pb-2 mb-4 flex items-center gap-2">
                 <span>🎮</span> 遊戲說明書
             </h2>
             
             <div class="space-y-5 text-gray-700 font-bold text-sm">
-                <!-- 玩法 1 -->
                 <div class="bg-pink-100/50 p-3 rounded-xl border border-pink-200/60">
                     <p class="text-pink-600 font-black mb-1.5 flex items-center gap-1.5">
                         <span class="inline-block w-5 h-5 bg-black text-white text-[10px] rounded-full flex items-center justify-center font-sans">TAP</span>
@@ -171,7 +169,6 @@
                     </p>
                 </div>
 
-                <!-- 玩法 2 -->
                 <div class="bg-purple-100/50 p-3 rounded-xl border border-purple-200/60">
                     <p class="text-purple-600 font-black mb-1.5 flex items-center gap-1.5">
                         <span class="inline-block w-5 h-5 bg-purple-500 text-white text-[10px] rounded-full flex items-center justify-center font-sans">HOLD</span>
@@ -182,7 +179,6 @@
                     </p>
                 </div>
 
-                <!-- 鍵盤操作 -->
                 <div class="bg-teal-50/70 p-3 rounded-xl border border-teal-200/60">
                     <p class="text-teal-600 font-black mb-2 flex items-center gap-1.5">
                         <span>⌨️</span> 鍵盤對應按鍵
@@ -195,14 +191,12 @@
                     </div>
                 </div>
 
-                <!-- 提示 -->
                 <div class="text-[11px] text-gray-500 bg-gray-100 p-2.5 rounded-lg border border-gray-200">
                     💡 提示：選擇「癸 (慢速)」可以給小朋友更多時間適應節奏與反應喔！
                 </div>
             </div>
         </div>
 
-        <!-- 遊戲主舞台 -->
         <div id="play-area" class="flex">
             <div class="lane" data-idx="0"><div class="lane-trigger">S</div></div>
             <div class="lane" data-idx="1"><div class="lane-trigger">D</div></div>
@@ -213,19 +207,15 @@
 
     </div>
 
-    <!-- 左上角儀表板 -->
     <div class="absolute top-4 left-4 z-50 pointer-events-none select-none">
         <div class="text-5xl font-black text-pink-600 drop-shadow-[0_2px_4px_rgba(255,255,255,0.8)]" id="score-display">0</div>
         <div class="text-xl font-black text-teal-500 drop-shadow-[0_2px_4px_rgba(255,255,255,0.8)] mt-1">COMBO <span id="combo-display">0</span></div>
     </div>
 
-    <!-- 右上角控制區 -->
     <div class="absolute top-4 right-4 z-50 flex items-center gap-2">
-        <!-- 說明按鈕 (任何時候都可點擊) -->
         <button id="help-btn" onclick="openHelp()" class="bg-white/90 text-pink-500 w-12 h-12 rounded-full shadow-lg font-black text-xl hover:bg-white active:scale-90 hover:scale-105 transition-all flex items-center justify-center">
             ❓
         </button>
-        <!-- 暫停按鈕 (遊戲中顯示) -->
         <div id="pause-btn-container" class="hidden">
             <button onclick="togglePause()" class="bg-white/90 text-pink-500 w-12 h-12 rounded-full shadow-lg font-black text-xl hover:bg-white active:scale-90 hover:scale-105 transition-all flex items-center justify-center">
                 ⏸
@@ -233,7 +223,6 @@
         </div>
     </div>
 
-    <!-- 開始大廳選單 -->
     <div id="start-screen" class="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-black/60 p-6 text-center backdrop-blur-sm">
         <h1 class="text-6xl font-black text-white drop-shadow-[0_4px_12px_rgba(255,105,180,0.9)] mb-8 font-serif" style="-webkit-text-stroke: 2px #d946ef;">魔幻鋼琴塊</h1>
 
@@ -259,14 +248,12 @@
         </div>
     </div>
 
-    <!-- 暫停遮罩 -->
     <div id="pause-screen" class="absolute inset-0 z-[250] flex flex-col items-center justify-center bg-black/80 p-8 text-center hidden backdrop-blur-md">
         <h1 class="text-5xl font-black text-white mb-10 tracking-widest font-serif">全集中・暫停中</h1>
         <button onclick="togglePause()" class="w-64 mb-4 bg-teal-400 text-white font-black py-4 rounded-xl text-2xl hover:bg-teal-300 shadow-lg hover:scale-105 active:scale-95 transition-transform">繼續任務</button>
         <button onclick="endGame(true)" class="w-64 bg-gray-500 text-white font-black py-4 rounded-xl text-xl hover:bg-gray-400 hover:scale-105 active:scale-95 transition-transform">撤回主選單</button>
     </div>
 
-    <!-- 【手機/彈出型說明遮罩】 -->
     <div id="help-screen" class="absolute inset-0 z-[300] flex flex-col items-center justify-center bg-black/80 p-6 text-center hidden backdrop-blur-md">
         <div class="glass-ui p-6 w-full max-w-sm select-none text-left">
             <h2 class="text-2xl font-black text-pink-600 border-b-2 border-pink-200 pb-2 mb-4 text-center">🎮 點擊與長按教學</h2>
@@ -309,28 +296,35 @@
     <audio id="bgm-player"></audio>
 
     <script>
-        // --- 1. 曲目設定（包含本地相對路徑 ＋ 雲端備份路徑） ---
+        // --- 1. 曲目設定（成功納入第三首新歌 DDUDU） ---
         const SONGS = {
             gurenge: {
                 title: "紅蓮華 (Piano Ver.)",
-                url: "bgm.mp3",  // 優先本地載入
-                backupUrl: "https://raw.githubusercontent.com/w8523147/demon-slayer-rhythm/main/bgm.mp3", // 線上備份
+                url: "bgm.mp3",  
+                backupUrl: "https://raw.githubusercontent.com/w8523147/demon-slayer-rhythm/main/bgm.mp3", 
                 bpm: 135,
                 offset: 2200 
             },
             bibi: {
                 title: "小雞嗶嗶",
-                url: "BiBi.mp3", // 優先本地載入
-                backupUrl: "https://github.com/w8523147/demon-slayer-rhythm/raw/refs/heads/main/BiBi.mp3", // 線上備份
+                url: "BiBi.mp3", 
+                backupUrl: "https://github.com/w8523147/demon-slayer-rhythm/raw/refs/heads/main/BiBi.mp3", 
                 bpm: 130,
                 offset: 1000 
+            },
+            ddudu: {
+                title: "DDU-DU DDU-DU",
+                url: "DDUDU.mp3", // 優先嘗試同目錄下的本地相對路徑檔案
+                backupUrl: "https://github.com/w8523147/demon-slayer-rhythm/raw/refs/heads/main/DDUDU.mp3", // 智慧備用連結
+                bpm: 140,       // 節奏感強烈的舞曲快節奏
+                offset: 1200    
             }
         };
 
         const CONFIG = {
-            easy: { speedRate: 0.8, leadTime: 2500 },    // 慢速：方塊耗時 2.5 秒落地，非常適合孩童
-            normal: { speedRate: 1.0, leadTime: 1800 },  // 正常速度
-            hard: { speedRate: 1.3, leadTime: 1200 }     // 快速 1.3 倍
+            easy: { speedRate: 0.8, leadTime: 2500 },    
+            normal: { speedRate: 1.0, leadTime: 1800 },  
+            hard: { speedRate: 1.3, leadTime: 1200 }     
         };
 
         let currentSongKey = "gurenge";
@@ -341,7 +335,7 @@
         let audioCtx;
         let gameChart = [];
         let pxPerMs = 0;
-        let isSynthMode = false; // 是否進入無音樂電子音備用模式
+        let isSynthMode = false; 
         let synthStartTime = 0;
 
         const playArea = document.getElementById('play-area');
@@ -350,7 +344,7 @@
         const startBtn = document.getElementById('start-btn');
         const audioInfo = document.getElementById('audio-info');
 
-        // --- 2. 智慧音訊載入與容錯防禦機制 ---
+        // --- 2. 智慧音訊載入與防禦機制 ---
         const initUI = () => {
             const select = document.getElementById('song-select');
             select.innerHTML = Object.keys(SONGS).map(k => `<option value="${k}">${SONGS[k].title}</option>`).join('');
@@ -367,22 +361,22 @@
             bgm.load();
             
             bgm.oncanplaythrough = () => {
-                enableStartButton("準備就緒 ♪ (本地音源)");
+                enableStartButton("準備就緒 ♪ (相對路徑優先)");
             };
 
             bgm.onerror = () => {
-                console.warn(`[本地音源讀取失敗] 嘗試切換到 GitHub 備份連結: ${SONGS[currentSongKey].backupUrl}`);
+                console.warn(`[相對路徑讀取失敗] 自動切換到雲端防跨域備援連結`);
                 bgm.src = SONGS[currentSongKey].backupUrl;
                 bgm.load();
                 
                 bgm.oncanplaythrough = () => {
-                    enableStartButton("準備就緒 ♪ (線上音源)");
+                    enableStartButton("準備就緒 ♪ (備用網路音源)");
                 };
                 
                 bgm.onerror = () => {
-                    console.error("[所有音訊讀取失敗] 開啟電子音備份遊玩模式");
+                    console.error("[所有音訊失效] 啟動全集中電子音生成模式");
                     isSynthMode = true;
-                    enableStartButton("準備就緒 ♪ (全集中合成音模式)");
+                    enableStartButton("準備就緒 ♪ (合成音測試模式)");
                 };
             };
         };
@@ -413,12 +407,8 @@
             }
         }
 
-        // --- 3. 玩法教學彈窗控制 ---
         function openHelp() {
-            // 如果在遊戲中點開說明，自動暫停遊戲
-            if (isPlaying && !isPaused) {
-                togglePause();
-            }
+            if (isPlaying && !isPaused) togglePause();
             document.getElementById('help-screen').classList.remove('hidden');
         }
 
@@ -426,7 +416,7 @@
             document.getElementById('help-screen').classList.add('hidden');
         }
 
-        // --- 4. 鋼琴塊譜面引擎 (短音符與長音符均勻分配) ---
+        // --- 3. 鋼琴塊譜面引擎 ---
         const generatePianoChart = (duration) => {
             const chart = [];
             const song = SONGS[currentSongKey];
@@ -436,7 +426,6 @@
             for (let t = song.offset; t < (duration * 1000) - 2000; t += (beatInterval / 2)) {
                 if(Math.random() < 0.25) continue; 
 
-                // 25% 的機率生成為長按方塊，其餘為單擊方塊
                 let isLong = Math.random() > 0.75;
                 let noteDuration = isLong ? beatInterval * (1.2 + Math.random() * 0.8) : 0;
 
@@ -462,7 +451,7 @@
             return chart;
         };
 
-        // --- 5. 遊戲主循環與精確位移渲染 ---
+        // --- 4. 遊戲主循環 ---
         function startGame() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -499,7 +488,7 @@
                 const leadTime = CONFIG[currentLevel].leadTime;
                 const hitZoneY = window.innerHeight * 0.85; 
                 pxPerMs = hitZoneY / leadTime;
-                const baseHeight = window.innerHeight * 0.16; // 單擊方塊基準高度
+                const baseHeight = window.innerHeight * 0.16; 
 
                 gameChart.forEach(note => {
                     if (!note.spawned && currentTime >= (note.time - leadTime - note.duration)) {
@@ -546,12 +535,11 @@
             requestAnimationFrame(frame);
         }
 
-        // --- 6. 繪製與打擊反饋 (優化方塊結構) ---
+        // --- 5. 繪製方塊與打擊結構 ---
         function spawnTile(noteData) {
             const div = document.createElement('div');
             
             if (noteData.type === 'short') {
-                // 【核心修改】單擊方塊（黑色）：內嵌帶有白色外圈的 🎯 TAP 標示
                 div.className = 'piano-tile';
                 div.innerHTML = `
                     <div class="w-full h-full flex flex-col items-center justify-center relative overflow-hidden">
@@ -563,21 +551,14 @@
                     </div>
                 `;
             } else {
-                // 【核心修改】長按方塊（紫色）：帶有虛線軌跡、👇 HOLD 按住指示、起迄點文字
                 div.className = 'piano-tile long-tile';
                 div.innerHTML = `
                     <div class="w-full h-full flex flex-col justify-between items-center py-2 relative overflow-hidden">
                         <div class="absolute inset-1 border border-white/25 rounded-[10px]"></div>
-                        
-                        <!-- 起點標記 -->
                         <div class="z-10 bg-purple-900/80 px-2 py-0.5 rounded-full border border-purple-300/40 text-white text-[10px] font-black tracking-widest flex items-center gap-0.5 shadow-md">
                             <span>👇</span> HOLD 按住
                         </div>
-                        
-                        <!-- 導引虛線 -->
                         <div class="absolute inset-y-8 left-1/2 -translate-x-1/2 w-0 border-l-2 border-dashed border-white/30 z-0"></div>
-                        
-                        <!-- 尾端放開標記 -->
                         <div class="z-10 bg-black/45 px-2 py-0.5 rounded-full border border-white/20 text-white/95 text-[9px] font-bold tracking-wider shadow-md">
                             RELEASE 放開 🖐️
                         </div>
@@ -591,7 +572,6 @@
             noteData.spawned = true;
         }
 
-        // 手指或滑鼠按下
         function handlePress(laneIdx) {
             if (!isPlaying || isPaused) return;
             initAudioCtx();
@@ -619,14 +599,13 @@
                     setTimeout(() => targetNote.element.remove(), 150);
                 } else {
                     targetNote.holding = true;
-                    targetNote.element.classList.add('active'); // 點擊成功後，紫色長條在畫面上亮起藍綠色科技光芒
+                    targetNote.element.classList.add('active'); 
                     showJudgement(laneIdx, "HOLDING");
                 }
                 updateUI();
             }
         }
 
-        // 手指或滑鼠鬆開
         function handleRelease(laneIdx) {
             lanesDOM[laneIdx].classList.remove('active');
             
@@ -670,7 +649,6 @@
             osc.stop(audioCtx.currentTime + 0.35);
         }
 
-        // --- 7. 事件監聽設定 ---
         lanesDOM.forEach((lane, idx) => {
             lane.addEventListener('pointerdown', (e) => { e.preventDefault(); handlePress(idx); });
             lane.addEventListener('pointerup', (e) => { e.preventDefault(); handleRelease(idx); });
