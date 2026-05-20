@@ -153,6 +153,7 @@
 
     <div id="game-wrapper">
         
+        <!-- 【左側說明板】常駐顯示，設計精美 -->
         <div class="hidden lg:flex flex-col w-72 glass-ui p-6 mr-6 select-none max-h-[90vh] overflow-y-auto">
             <h2 class="text-2xl font-black text-pink-600 border-b-2 border-pink-200 pb-2 mb-4 flex items-center gap-2">
                 <span>🎮</span> 遊戲說明書
@@ -197,6 +198,7 @@
             </div>
         </div>
 
+        <!-- 遊戲主舞台 -->
         <div id="play-area" class="flex">
             <div class="lane" data-idx="0"><div class="lane-trigger">S</div></div>
             <div class="lane" data-idx="1"><div class="lane-trigger">D</div></div>
@@ -207,11 +209,13 @@
 
     </div>
 
+    <!-- 左上角儀表板 -->
     <div class="absolute top-4 left-4 z-50 pointer-events-none select-none">
         <div class="text-5xl font-black text-pink-600 drop-shadow-[0_2px_4px_rgba(255,255,255,0.8)]" id="score-display">0</div>
         <div class="text-xl font-black text-teal-500 drop-shadow-[0_2px_4px_rgba(255,255,255,0.8)] mt-1">COMBO <span id="combo-display">0</span></div>
     </div>
 
+    <!-- 右上角控制區 -->
     <div class="absolute top-4 right-4 z-50 flex items-center gap-2">
         <button id="help-btn" onclick="openHelp()" class="bg-white/90 text-pink-500 w-12 h-12 rounded-full shadow-lg font-black text-xl hover:bg-white active:scale-90 hover:scale-105 transition-all flex items-center justify-center">
             ❓
@@ -223,6 +227,7 @@
         </div>
     </div>
 
+    <!-- 開始大廳選單 -->
     <div id="start-screen" class="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-black/60 p-6 text-center backdrop-blur-sm">
         <h1 class="text-6xl font-black text-white drop-shadow-[0_4px_12px_rgba(255,105,180,0.9)] mb-8 font-serif" style="-webkit-text-stroke: 2px #d946ef;">魔幻鋼琴塊</h1>
 
@@ -248,12 +253,14 @@
         </div>
     </div>
 
+    <!-- 暫停遮罩 -->
     <div id="pause-screen" class="absolute inset-0 z-[250] flex flex-col items-center justify-center bg-black/80 p-8 text-center hidden backdrop-blur-md">
         <h1 class="text-5xl font-black text-white mb-10 tracking-widest font-serif">全集中・暫停中</h1>
         <button onclick="togglePause()" class="w-64 mb-4 bg-teal-400 text-white font-black py-4 rounded-xl text-2xl hover:bg-teal-300 shadow-lg hover:scale-105 active:scale-95 transition-transform">繼續任務</button>
         <button onclick="endGame(true)" class="w-64 bg-gray-500 text-white font-black py-4 rounded-xl text-xl hover:bg-gray-400 hover:scale-105 active:scale-95 transition-transform">撤回主選單</button>
     </div>
 
+    <!-- 教學遮罩 -->
     <div id="help-screen" class="absolute inset-0 z-[300] flex flex-col items-center justify-center bg-black/80 p-6 text-center hidden backdrop-blur-md">
         <div class="glass-ui p-6 w-full max-w-sm select-none text-left">
             <h2 class="text-2xl font-black text-pink-600 border-b-2 border-pink-200 pb-2 mb-4 text-center">🎮 點擊與長按教學</h2>
@@ -296,7 +303,7 @@
     <audio id="bgm-player"></audio>
 
     <script>
-        // --- 1. 曲目設定（成功納入第三首新歌 DDUDU） ---
+        // --- 1. 曲目設定（包含本機相對路徑 ＋ 雲端備份路徑，並成功加入 Golden、The Feels、Baby 三首新歌） ---
         const SONGS = {
             gurenge: {
                 title: "紅蓮華 (Piano Ver.)",
@@ -314,10 +321,31 @@
             },
             ddudu: {
                 title: "DDU-DU DDU-DU",
-                url: "DDUDU.mp3", // 優先嘗試同目錄下的本地相對路徑檔案
-                backupUrl: "https://github.com/w8523147/demon-slayer-rhythm/raw/refs/heads/main/DDUDU.mp3", // 智慧備用連結
-                bpm: 140,       // 節奏感強烈的舞曲快節奏
+                url: "DDUDU.mp3", 
+                backupUrl: "https://github.com/w8523147/demon-slayer-rhythm/raw/refs/heads/main/DDUDU.mp3", 
+                bpm: 140,       
                 offset: 1200    
+            },
+            golden: {
+                title: "Golden",
+                url: "Golden.mp3", 
+                backupUrl: "https://github.com/w8523147/demon-slayer-rhythm/raw/refs/heads/main/Golden.mp3", 
+                bpm: 130,       
+                offset: 1000    
+            },
+            thefeels: {
+                title: "The Feels",
+                url: "TheFeels.mp3", 
+                backupUrl: "https://github.com/w8523147/demon-slayer-rhythm/raw/refs/heads/main/TheFeels.mp3", 
+                bpm: 120,       
+                offset: 1000    
+            },
+            baby: {
+                title: "Baby",
+                url: "Baby.mp3", 
+                backupUrl: "https://github.com/w8523147/demon-slayer-rhythm/raw/refs/heads/main/Baby.mp3", 
+                bpm: 130,       
+                offset: 1000    
             }
         };
 
@@ -485,6 +513,8 @@
                     currentTime = (performance.now() - synthStartTime) * CONFIG[currentLevel].speedRate;
                 }
 
+                const Math_max = Math.max;
+                const Math_min = Math.min;
                 const leadTime = CONFIG[currentLevel].leadTime;
                 const hitZoneY = window.innerHeight * 0.85; 
                 pxPerMs = hitZoneY / leadTime;
@@ -606,6 +636,7 @@
             }
         }
 
+        // 手指或滑鼠鬆開
         function handleRelease(laneIdx) {
             lanesDOM[laneIdx].classList.remove('active');
             
