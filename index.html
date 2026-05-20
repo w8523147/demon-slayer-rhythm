@@ -3,146 +3,186 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>日輪之律 - 掃描線模式</title>
+    <title>鋼琴塊模式 - 日輪之律</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&display=swap');
         
         :root { 
-            --water-blue: #00b4d8; 
-            --fire-red: #e63946; 
-            --thunder-yellow: #ffb703; 
-            --note-size: 80px;
+            --tile-black: #111111;
+            --tile-active: #2dd4bf; /* 參考圖片的亮藍綠色 */
+            --bg-top: #ffe6f2;      /* 參考圖片的粉色漸層 */
+            --bg-bottom: #ffb3d9;
         }
         
         body {
-            background-color: #050505; color: #f1f1f1; font-family: 'Noto Serif TC', serif;
+            background: linear-gradient(to bottom, var(--bg-top), var(--bg-bottom));
+            color: #333; font-family: 'Nunito', sans-serif;
             overflow: hidden; margin: 0; touch-action: none; user-select: none;
-            background-image: 
-                radial-gradient(circle at center, #1a1a1a 0%, #000 100%),
-                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-            background-size: 100% 100%, 40px 40px, 40px 40px;
         }
 
-        #play-area { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; }
-
-        .cytus-note {
-            position: absolute; width: var(--note-size); height: var(--note-size);
-            transform: translate(-50%, -50%); border-radius: 50%; z-index: 40; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            animation: pop-in 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        }
-        @keyframes pop-in { 0% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
-
-        .note-inner { width: 40%; height: 40%; border-radius: 50%; background: #fff; box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 0 15px rgba(255,255,255,0.8); z-index: 2; pointer-events: none; }
-        .note-ring {
-            position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 4px solid var(--water-blue); box-sizing: border-box; opacity: 0.8; pointer-events: none; transform: scale(2.5); transition: transform linear;
+        /* 遊戲區域 */
+        #play-area { 
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
+            display: flex; max-width: 500px; margin: 0 auto;
+            background: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 0 30px rgba(255, 105, 180, 0.3);
         }
 
-        .note-hit-effect {
-            position: absolute; width: var(--note-size); height: var(--note-size); transform: translate(-50%, -50%); border-radius: 50%; background: var(--water-blue); z-index: 39; pointer-events: none; animation: hit-blast 0.4s ease-out forwards;
+        /* 四條軌道 */
+        .lane {
+            flex: 1; position: relative; height: 100%;
+            border-right: 2px solid rgba(255,255,255,0.6);
         }
-        @keyframes hit-blast { 0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; } 100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; } }
+        .lane:last-child { border-right: none; }
+        .lane.active { background: rgba(45, 212, 191, 0.1); } /* 點擊時軌道發光 */
 
+        /* 判定線 (裝飾用，讓玩家知道大概在哪裡按) */
+        #hit-line {
+            position: absolute; bottom: 15vh; width: 100%; height: 4px;
+            background: rgba(0,0,0,0.1); z-index: 50; pointer-events: none;
+            border-top: 2px dashed rgba(255,255,255,0.8);
+        }
+
+        /* 鋼琴方塊 */
+        .piano-tile {
+            position: absolute; width: 100%; 
+            background: var(--tile-black);
+            z-index: 40; will-change: transform;
+            border: 1px solid #000;
+            box-sizing: border-box;
+            border-radius: 4px; /* 稍微圓角更友善 */
+        }
+
+        /* 長按音符的特殊樣式 */
+        .piano-tile.long-tile {
+            background: linear-gradient(to bottom, #333 0%, var(--tile-black) 100%);
+            border-left: 4px solid #555;
+            border-right: 4px solid #555;
+        }
+
+        /* 按下的狀態 (圖片中的亮藍色) */
+        .piano-tile.active {
+            background: var(--tile-active);
+            box-shadow: inset 0 0 20px rgba(255,255,255,0.8), 0 0 20px var(--tile-active);
+            border-color: #fff;
+        }
+
+        /* 點擊特效 (波紋) */
+        .ripple {
+            position: absolute; left: 50%; bottom: 15vh;
+            transform: translate(-50%, 50%); width: 100px; height: 100px;
+            background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(45,212,191,0) 70%);
+            border-radius: 50%; z-index: 60; pointer-events: none;
+            animation: ripple-anim 0.4s ease-out forwards;
+        }
+        @keyframes ripple-anim {
+            0% { transform: translate(-50%, 50%) scale(0.5); opacity: 1; }
+            100% { transform: translate(-50%, 50%) scale(2); opacity: 0; }
+        }
+
+        /* 判定文字 (泡泡字體風格) */
         .local-judgement {
-            position: absolute; transform: translate(-50%, -100%); font-size: 1.5rem; font-weight: 900; text-shadow: 0 0 10px rgba(0,0,0,0.8); z-index: 100; pointer-events: none; animation: float-up 0.5s ease-out forwards;
+            position: absolute; transform: translate(-50%, -50%);
+            font-size: 2.5rem; font-weight: 900;
+            color: #d946ef; /* 紫粉色字體 */
+            text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 100; pointer-events: none;
+            animation: float-up 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
-        @keyframes float-up { 0% { opacity: 1; transform: translate(-50%, -50%) scale(0.8); } 50% { transform: translate(-50%, -100%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -150%) scale(1); } }
+        @keyframes float-up {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(0.5) rotate(-5deg); }
+            50% { transform: translate(-50%, -100%) scale(1.2) rotate(5deg); }
+            100% { opacity: 0; transform: translate(-50%, -150%) scale(1); }
+        }
 
-        .glass-ui { background: rgba(10, 10, 10, 0.85); border: 1px solid #444; backdrop-filter: blur(10px); }
-        .diff-btn { border: 1px solid #c0a080; padding: 6px 10px; font-size: 0.7rem; color: #c0a080; border-radius: 4px; transition: 0.3s; }
-        .diff-btn.active { background: #c0a080; color: #1a120b; font-weight: 900; }
-        .start-anim { animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        /* UI 層 */
+        .glass-ui { background: rgba(255, 255, 255, 0.8); border: 2px solid #fff; box-shadow: 0 8px 32px rgba(255,105,180,0.2); border-radius: 12px; backdrop-filter: blur(8px); }
+        .diff-btn { border: 2px solid #ffb3d9; padding: 8px; font-size: 0.9rem; color: #d946ef; border-radius: 8px; transition: 0.2s; font-weight: 800; }
+        .diff-btn.active { background: #d946ef; color: #fff; border-color: #d946ef; }
     </style>
 </head>
 <body>
 
-    <div id="play-area"></div>
+    <!-- 遊戲主舞台 -->
+    <div id="play-area">
+        <div class="lane" data-idx="0"></div>
+        <div class="lane" data-idx="1"></div>
+        <div class="lane" data-idx="2"></div>
+        <div class="lane" data-idx="3"></div>
+        <div id="hit-line"></div>
+    </div>
 
     <!-- UI 面板 -->
-    <div class="absolute top-4 left-4 glass-ui p-4 rounded shadow-2xl z-50 pointer-events-none">
-        <div class="flex items-center gap-3">
-            <div>
-                <div class="text-[10px] text-amber-500 tracking-[0.2em] font-bold">SCORE</div>
-                <div id="score-display" class="text-3xl font-black text-white italic">000000</div>
-            </div>
-            <div class="border-l border-gray-600 pl-3">
-                <div class="text-[10px] text-sky-400 tracking-[0.2em] font-bold">COMBO</div>
-                <div id="combo-display" class="text-3xl font-black text-white">0</div>
-            </div>
-        </div>
+    <div class="absolute top-4 left-4 z-50 pointer-events-none">
+        <div class="text-4xl font-black text-pink-500 drop-shadow-md" id="score-display">0</div>
+        <div class="text-lg font-bold text-teal-400 drop-shadow-md">COMBO <span id="combo-display">0</span></div>
     </div>
 
     <!-- 暫停按鈕 -->
     <div id="pause-btn-container" class="absolute top-4 right-4 z-50 hidden">
-        <button onclick="togglePause()" class="glass-ui px-5 py-3 text-white font-black text-sm rounded shadow-lg tracking-widest hover:bg-white/10 transition">
-            || PAUSE
+        <button onclick="togglePause()" class="bg-white/80 text-pink-500 p-3 rounded-full shadow-lg font-black text-xl hover:bg-white active:scale-95 transition">
+            ⏸
         </button>
     </div>
 
     <!-- 開始選單 -->
-    <div id="start-screen" class="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-black/95 p-8 text-center">
-        <h2 class="text-amber-600 text-sm tracking-[0.8em] mb-2">REACTION STYLE RHYTHM</h2>
-        <h1 class="text-6xl font-black text-white italic border-b-4 border-amber-800 pb-2 mb-8">日輪之律</h1>
+    <div id="start-screen" class="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-black/60 p-6 text-center backdrop-blur-sm">
+        <h1 class="text-6xl font-black text-white drop-shadow-[0_4px_10px_rgba(255,105,180,0.8)] mb-8" style="-webkit-text-stroke: 2px #d946ef;">魔幻鋼琴塊</h1>
 
-        <div class="glass-ui p-6 rounded-xl w-full max-w-sm shadow-2xl">
-            <div class="mb-4 text-left">
-                <p class="text-amber-100/60 text-[10px] mb-1 uppercase tracking-widest">Select Song</p>
-                <select id="song-select" class="bg-black/50 border border-amber-900 text-white text-sm p-3 w-full rounded outline-none focus:border-amber-500"></select>
+        <div class="glass-ui p-6 w-full max-w-sm">
+            <div class="mb-5 text-left">
+                <p class="text-pink-500 font-black mb-2">♪ 選擇歌曲</p>
+                <select id="song-select" class="bg-white border-2 border-pink-300 text-gray-700 text-lg p-3 w-full rounded-xl outline-none font-bold shadow-inner"></select>
             </div>
 
-            <div class="mb-6 text-left">
-                <p class="text-amber-100/60 text-[10px] mb-1 uppercase tracking-widest">Difficulty & Speed</p>
+            <div class="mb-8 text-left">
+                <p class="text-pink-500 font-black mb-2">★ 選擇難度 (掉落速度)</p>
                 <div class="flex justify-between gap-2">
-                    <button class="diff-btn active flex-1" onclick="setDiff('easy', this)">癸 (慢速)</button>
-                    <button class="diff-btn flex-1" onclick="setDiff('normal', this)">乙 (原速)</button>
-                    <button class="diff-btn flex-1" onclick="setDiff('hard', this)">柱 (加速)</button>
+                    <button class="diff-btn active flex-1" onclick="setDiff('easy', this)">簡單</button>
+                    <button class="diff-btn flex-1" onclick="setDiff('normal', this)">普通</button>
+                    <button class="diff-btn flex-1" onclick="setDiff('hard', this)">挑戰</button>
                 </div>
             </div>
 
-            <button id="start-btn" disabled class="w-full bg-slate-800 text-slate-500 font-black py-4 rounded-lg text-lg transition-all border-b-4 border-slate-900 hover:scale-105 active:scale-95">
-                連接音律網路中...
+            <button id="start-btn" disabled class="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white font-black py-4 rounded-xl text-2xl shadow-xl hover:scale-105 active:scale-95 transition-all">
+                載入音樂中...
             </button>
-            <p id="audio-info" class="text-amber-700 text-[9px] mt-4 font-bold tracking-tighter">WAITING...</p>
+            <p id="audio-info" class="text-pink-600 text-xs mt-3 font-bold">請稍候...</p>
         </div>
     </div>
 
     <!-- 暫停選單 -->
-    <div id="pause-screen" class="absolute inset-0 z-[250] flex flex-col items-center justify-center bg-black/90 p-8 text-center hidden backdrop-blur-sm">
-        <h1 class="text-5xl font-black text-white italic mb-10 tracking-[0.2em]">PAUSED</h1>
-        <button onclick="togglePause()" class="w-64 mb-4 bg-amber-600 text-white font-black py-4 rounded-lg text-xl hover:bg-amber-500 transition-colors shadow-[0_0_20px_rgba(217,119,6,0.5)]">繼續遊戲</button>
-        <button onclick="endGame(true)" class="w-64 bg-slate-800 text-slate-400 font-black py-4 rounded-lg text-lg hover:bg-slate-700 transition-colors">放棄任務</button>
+    <div id="pause-screen" class="absolute inset-0 z-[250] flex flex-col items-center justify-center bg-black/80 p-8 text-center hidden backdrop-blur-md">
+        <h1 class="text-5xl font-black text-white mb-10">遊戲暫停</h1>
+        <button onclick="togglePause()" class="w-64 mb-4 bg-teal-400 text-white font-black py-4 rounded-xl text-2xl hover:bg-teal-300 shadow-lg">繼續</button>
+        <button onclick="endGame(true)" class="w-64 bg-gray-400 text-white font-black py-4 rounded-xl text-xl hover:bg-gray-300">回主選單</button>
     </div>
 
     <audio id="bgm-player"></audio>
 
     <script>
         // --- 1. 曲目與設定 ---
-        // 【大師優化】：既然已經部署到 GitHub Pages，直接使用「相對路徑」是最快且保證不會有 CORS 阻擋的方法！
         const SONGS = {
             gurenge: {
                 title: "紅蓮華",
-                url: "bgm.mp3",  // 直接讀取同資料夾下的 bgm.mp3
+                url: "bgm.mp3",  
                 bpm: 135,
                 offset: 2200 
             },
             bibi: {
                 title: "小雞嗶嗶",
-                url: "BiBi.mp3", // 直接讀取同資料夾下的 BiBi.mp3
+                url: "BiBi.mp3", 
                 bpm: 130,
                 offset: 1000 
             }
         };
 
         const CONFIG = {
-            easy: { color: '#00b4d8', speedRate: 0.8 },    // 慢速 0.8 倍
-            normal: { color: '#ffb703', speedRate: 1.0 },  // 正常速度
-            hard: { color: '#e63946', speedRate: 1.3 }     // 加速 1.3 倍
+            easy: { speedRate: 0.8, leadTime: 2500 },    // 慢速，方塊在螢幕上停留 2.5 秒，極度適合孩童
+            normal: { speedRate: 1.0, leadTime: 1800 },  // 正常速度
+            hard: { speedRate: 1.2, leadTime: 1200 }     // 加速
         };
-
-        const PRE_SPAWN_BEATS = 1; 
 
         let currentSongKey = "gurenge";
         let currentLevel = 'easy';
@@ -151,9 +191,10 @@
         let score = 0, combo = 0, maxCombo = 0;
         let audioCtx;
         let gameChart = [];
-        let leadTime = 0;
+        let pxPerMs = 0;
 
         const playArea = document.getElementById('play-area');
+        const lanesDOM = Array.from(document.querySelectorAll('.lane'));
         const bgm = document.getElementById('bgm-player');
         const startBtn = document.getElementById('start-btn');
         const audioInfo = document.getElementById('audio-info');
@@ -167,29 +208,23 @@
 
         const loadMusic = () => {
             startBtn.disabled = true;
-            startBtn.innerText = "讀取音源中...";
-            startBtn.classList.replace('bg-amber-600', 'bg-slate-800');
-            startBtn.classList.replace('bg-red-800', 'bg-slate-800'); 
-            startBtn.classList.remove('start-anim');
+            startBtn.innerText = "載入音樂中...";
+            startBtn.classList.replace('from-pink-500', 'from-gray-400');
+            startBtn.classList.replace('to-purple-500', 'to-gray-500');
             
-            // 使用相對路徑直接讀取，加上隨機數避免 GitHub Pages 強制快取舊檔
             bgm.src = SONGS[currentSongKey].url + "?t=" + new Date().getTime(); 
             bgm.load();
             
             bgm.oncanplaythrough = () => {
                 startBtn.disabled = false;
-                startBtn.classList.replace('bg-slate-800', 'bg-amber-600');
-                startBtn.classList.replace('text-slate-500', 'text-white');
-                startBtn.classList.add('start-anim');
-                startBtn.innerText = "LINK START";
-                audioInfo.innerText = "READY TO PLAY / 音源就緒";
+                startBtn.classList.replace('from-gray-400', 'from-pink-500');
+                startBtn.classList.replace('to-gray-500', 'to-purple-500');
+                startBtn.innerText = "開始遊玩！";
+                audioInfo.innerText = "準備完成 ♪";
             };
 
             bgm.onerror = () => {
-                startBtn.disabled = true;
-                startBtn.classList.replace('bg-slate-800', 'bg-red-800');
-                startBtn.innerText = "讀取失敗";
-                audioInfo.innerText = `❌ 找不到檔案：${SONGS[currentSongKey].url}。請確認檔名大小寫！`;
+                audioInfo.innerText = "❌ 找不到音樂檔案，請確認檔名！";
             };
         };
 
@@ -197,70 +232,68 @@
             currentLevel = level;
             document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            document.documentElement.style.setProperty('--water-blue', CONFIG[level].color);
         }
 
-        // --- 3. 暫停功能邏輯 ---
         function togglePause() {
             if (!isPlaying) return;
             isPaused = !isPaused;
             const pauseScreen = document.getElementById('pause-screen');
-            
-            if (isPaused) {
-                bgm.pause();
-                pauseScreen.classList.remove('hidden');
-            } else {
-                bgm.play();
-                pauseScreen.classList.add('hidden');
-            }
+            if (isPaused) { bgm.pause(); pauseScreen.classList.remove('hidden'); } 
+            else { bgm.play(); pauseScreen.classList.add('hidden'); }
         }
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key === "Escape" && isPlaying) togglePause();
-        });
-
-        // --- 4. 譜面引擎 ---
-        const generateHitChart = (duration) => {
+        // --- 3. 鋼琴塊譜面引擎 ---
+        const generatePianoChart = (duration) => {
             const chart = [];
             const song = SONGS[currentSongKey];
             const beatInterval = (60 / song.bpm) * 1000;
-            leadTime = beatInterval * PRE_SPAWN_BEATS;
             
-            for (let t = song.offset; t < (duration * 1000) - 3000; t += beatInterval) {
-                let posX, posY;
-                do {
-                    posX = 15 + Math.random() * 70;
-                    posY = 15 + Math.random() * 70;
-                } while (posX < 45 && Math.abs(posY) < 25);
+            // 記錄每條軌道什麼時候才空出來，避免音符重疊
+            let nextFreeTime = [0, 0, 0, 0]; 
 
-                chart.push({ time: t, x: posX, y: posY, spawned: false, hit: false, element: null });
+            for (let t = song.offset; t < (duration * 1000) - 2000; t += (beatInterval / 2)) {
+                // 減少密集度，不是每個半拍都有音符
+                if(Math.random() < 0.3) continue;
 
-                if(Math.random() > 0.85) {
-                    let t2 = t + (beatInterval / 2);
-                    let posX2, posY2;
-                    do {
-                        posX2 = 15 + Math.random() * 70;
-                        posY2 = 15 + Math.random() * 70;
-                    } while ((posX2 < 45 && posY2 < 25) || (Math.abs(posX2 - posX) < 20 && Math.abs(posY2 - posY) < 20));
-                    
-                    chart.push({ time: t2, x: posX2, y: posY2, spawned: false, hit: false, element: null });
-                }
+                // 20% 機率是長按音符 (長度約為 1 到 2 個節拍)
+                let isLong = Math.random() > 0.8;
+                let noteDuration = isLong ? beatInterval * (1 + Math.random()) : 0;
+
+                // 尋找有空的軌道
+                let availableLanes = [0, 1, 2, 3].filter(l => nextFreeTime[l] <= t);
+                if (availableLanes.length === 0) continue; // 如果全滿就跳過這次
+
+                let lane = availableLanes[Math.floor(Math.random() * availableLanes.length)];
+
+                chart.push({ 
+                    time: t, 
+                    type: isLong ? 'long' : 'short', 
+                    duration: noteDuration, 
+                    lane: lane, 
+                    spawned: false, 
+                    hit: false, 
+                    missed: false,
+                    holding: false,
+                    element: null 
+                });
+
+                // 標記該軌道在音符結束前被佔用 (+100ms 緩衝)
+                nextFreeTime[lane] = t + noteDuration + 100; 
             }
-            chart.sort((a, b) => a.time - b.time);
             return chart;
         };
 
-        // --- 5. 遊戲主循環 ---
+        // --- 4. 遊戲主循環 ---
         function startGame() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
 
             document.getElementById('start-screen').style.display = 'none';
             document.getElementById('pause-btn-container').classList.remove('hidden');
-            document.querySelectorAll('.cytus-note').forEach(e => e.remove());
+            document.querySelectorAll('.piano-tile').forEach(e => e.remove());
             
             score = 0; combo = 0; isPaused = false; updateUI();
-            gameChart = generateHitChart(bgm.duration || 180);
+            gameChart = generatePianoChart(bgm.duration || 180);
             isPlaying = true;
 
             bgm.playbackRate = CONFIG[currentLevel].speedRate;
@@ -269,40 +302,62 @@
 
             function frame() {
                 if (!isPlaying) return;
-
-                if (isPaused) {
-                    requestAnimationFrame(frame);
-                    return;
-                }
+                if (isPaused) { requestAnimationFrame(frame); return; }
 
                 const currentTime = bgm.currentTime * 1000;
+                const leadTime = CONFIG[currentLevel].leadTime;
+                
+                // 判定線位置在底部 15vh (大約是畫面高度的 85%)
+                const hitZoneY = window.innerHeight * 0.85; 
+                // 計算速度：方塊每毫秒走多少像素
+                pxPerMs = hitZoneY / leadTime;
+                // 基本方塊高度 (佔畫面約 20%)
+                const baseHeight = window.innerHeight * 0.2;
 
                 gameChart.forEach(note => {
-                    const spawnTime = note.time - leadTime;
-
-                    if (!note.spawned && currentTime >= spawnTime && currentTime < note.time) {
-                        spawnNote(note);
+                    // 1. 生成音符 (提早進入畫面)
+                    if (!note.spawned && currentTime >= (note.time - leadTime - note.duration)) {
+                        spawnTile(note, baseHeight);
                     }
 
-                    if (note.spawned && !note.hit && note.element) {
-                        const ring = note.element.querySelector('.note-ring');
-                        if(ring) {
-                            let timeLeft = note.time - currentTime;
-                            let ringScale = 1.0 + (timeLeft / leadTime) * 1.5;
-                            ringScale = Math.max(1.0, Math.min(2.5, ringScale));
-                            ring.style.transform = `scale(${ringScale})`;
-                        }
-                    }
+                    if (note.spawned && note.element && !note.missed) {
+                        // 2. 計算位置
+                        // note.time 是方塊「底部」碰到判定線的時間
+                        // 所以方塊底部當前 Y 座標 = hitZoneY - (note.time - currentTime) * 速度
+                        let bottomY = hitZoneY - (note.time - currentTime) * pxPerMs;
+                        
+                        // 長音符的高度 = 基本高度 + (持續時間 * 速度)
+                        let height = note.type === 'long' ? baseHeight + (note.duration * pxPerMs) : baseHeight;
+                        let topY = bottomY - height;
 
-                    if (note.spawned && !note.hit && currentTime > note.time + 200) {
-                        note.hit = true;
-                        combo = 0; 
-                        updateUI();
-                        showJudgement(note.x, note.y, "MISS", "#ff4444");
-                        if(note.element) {
-                            note.element.style.opacity = '0.3';
-                            note.element.style.transform = `translate(-50%, -50%) scale(0.8)`;
-                            setTimeout(() => note.element.remove(), 200);
+                        // 更新視覺位置
+                        note.element.style.height = `${height}px`;
+                        note.element.style.transform = `translateY(${topY}px)`;
+
+                        // 3. 長按判定邏輯
+                        if (note.holding) {
+                            score += 1; // 按住時持續加分
+                            updateUI();
+                            // 如果頂部已經低於判定線，代表整條都按完了！
+                            if (topY >= hitZoneY) {
+                                note.holding = false;
+                                note.hit = true;
+                                combo++; if (combo > maxCombo) maxCombo = combo;
+                                showJudgement(note.lane, "PERFECT!");
+                                note.element.remove();
+                            }
+                        } 
+                        // 4. MISS 判定邏輯 (沒按，或按一半鬆開)
+                        else if (!note.hit) {
+                            // 如果底部超過判定線 300px (非常寬容的放過長度)，就算 MISS
+                            if (bottomY > hitZoneY + 300) {
+                                note.missed = true;
+                                combo = 0; updateUI();
+                                note.element.style.opacity = '0.3';
+                                // MISS 震動提示
+                                document.body.style.transform = "translateX(5px)";
+                                setTimeout(() => document.body.style.transform = "none", 50);
+                            }
                         }
                     }
                 });
@@ -313,104 +368,122 @@
             requestAnimationFrame(frame);
         }
 
-        // --- 6. 繪製與互動 ---
-        function spawnNote(noteData) {
+        // --- 5. 繪製與互動 ---
+        function spawnTile(noteData, baseHeight) {
             const div = document.createElement('div');
-            div.className = 'cytus-note';
-            div.style.left = `${noteData.x}%`;
-            div.style.top = `${noteData.y}%`;
+            div.className = `piano-tile ${noteData.type === 'long' ? 'long-tile' : ''}`;
             
-            div.innerHTML = `
-                <div class="note-ring" style="border-color: ${CONFIG[currentLevel].color}"></div>
-                <div class="note-inner"></div>
-            `;
+            // 初始在畫面最上方之外
+            div.style.transform = `translateY(-1000px)`; 
             
-            playArea.appendChild(div);
+            lanesDOM[noteData.lane].appendChild(div);
             noteData.element = div;
             noteData.spawned = true;
-
-            div.addEventListener('pointerdown', (e) => {
-                e.preventDefault(); 
-                handleHit(noteData);
-            });
         }
 
-        function handleHit(noteData) {
-            if (!isPlaying || isPaused || noteData.hit) return;
+        // 當手指/滑鼠「按下」軌道時
+        function handlePress(laneIdx) {
+            if (!isPlaying || isPaused) return;
             initAudio(); 
 
+            // 讓軌道閃爍一下
+            lanesDOM[laneIdx].classList.add('active');
+
             const currentTime = bgm.currentTime * 1000;
-            const diff = Math.abs(currentTime - noteData.time);
+            
+            // 找出該軌道「最接近判定線且還沒被判定」的音符
+            let activeNotes = gameChart.filter(n => n.lane === laneIdx && n.spawned && !n.hit && !n.missed && !n.holding);
+            if (activeNotes.length === 0) return;
 
-            if (diff > 250) {
-                noteData.hit = true;
-                combo = 0; updateUI();
-                showJudgement(noteData.x, noteData.y, "MISS", "#ff4444");
-                noteData.element.style.opacity = '0.3';
-                noteData.element.style.transform = `translate(-50%, -50%) scale(0.8)`;
-                setTimeout(() => noteData.element.remove(), 200);
-                return;
+            // 找時間最接近的 (最下面的)
+            let targetNote = activeNotes.reduce((prev, curr) => Math.abs(curr.time - currentTime) < Math.abs(prev.time - currentTime) ? curr : prev);
+
+            // 孩童友善的超大判定區間：只要前後差距在 400 毫秒以內都可以點到！
+            if (Math.abs(currentTime - targetNote.time) < 400) {
+                
+                // 擊中特效
+                createRipple(laneIdx);
+                
+                if (targetNote.type === 'short') {
+                    // 短音符：點到就得分並消失
+                    targetNote.hit = true;
+                    score += 50; combo++; if (combo > maxCombo) maxCombo = combo;
+                    showJudgement(laneIdx, "PERFECT");
+                    targetNote.element.style.transform = `${targetNote.element.style.transform} scale(1.1)`;
+                    targetNote.element.style.opacity = '0';
+                    setTimeout(() => targetNote.element.remove(), 200);
+                } else {
+                    // 長音符：標記為 holding，改變顏色
+                    targetNote.holding = true;
+                    targetNote.element.classList.add('active');
+                    showJudgement(laneIdx, "HOLD");
+                }
+                updateUI();
             }
-
-            noteData.hit = true;
-            let rating = ""; let points = 0; let color = "";
-
-            if (diff <= 60) { 
-                rating = "PERFECT"; points = 100; color = CONFIG[currentLevel].color;
-            } else if (diff <= 130) { 
-                rating = "GREAT"; points = 50; color = "#ffffff";
-            } else { 
-                rating = "GOOD"; points = 30; color = "#aaaaaa";
-            }
-
-            score += points; combo++; if (combo > maxCombo) maxCombo = combo;
-            updateUI();
-            showJudgement(noteData.x, noteData.y, rating, color);
-            createHitEffect(noteData.x, noteData.y, color);
-            noteData.element.remove();
         }
 
-        function createHitEffect(x, y, color) {
+        // 當手指/滑鼠「鬆開」軌道時
+        function handleRelease(laneIdx) {
+            lanesDOM[laneIdx].classList.remove('active');
+            
+            // 檢查該軌道有沒有正在按住的長音符
+            let holdingNote = gameChart.find(n => n.lane === laneIdx && n.holding);
+            if (holdingNote) {
+                holdingNote.holding = false;
+                holdingNote.hit = true; // 算他擊中，但不給最後的 Perfect 加成
+                holdingNote.element.style.opacity = '0.5';
+                setTimeout(() => holdingNote.element.remove(), 300);
+            }
+        }
+
+        function createRipple(laneIdx) {
             const effect = document.createElement('div');
-            effect.className = 'note-hit-effect';
-            effect.style.left = `${x}%`;
-            effect.style.top = `${y}%`;
-            effect.style.background = color;
-            playArea.appendChild(effect);
+            effect.className = 'ripple';
+            lanesDOM[laneIdx].appendChild(effect);
             setTimeout(() => effect.remove(), 400);
         }
 
-        function showJudgement(x, y, txt, col) {
+        function showJudgement(laneIdx, txt) {
             const el = document.createElement('div');
             el.className = 'local-judgement';
-            el.style.left = `${x}%`;
-            el.style.top = `${y}%`;
-            el.style.color = col;
+            el.style.left = '50%';
+            el.style.top = '85%';
             el.innerText = txt;
-            playArea.appendChild(el);
+            lanesDOM[laneIdx].appendChild(el);
             setTimeout(() => el.remove(), 500);
         }
 
         function updateUI() {
-            document.getElementById('score-display').innerText = Math.floor(score).toString().padStart(6, '0');
+            document.getElementById('score-display').innerText = score;
             document.getElementById('combo-display').innerText = combo;
         }
 
         function endGame(forced = false) {
             isPlaying = false;
             document.getElementById('pause-btn-container').classList.add('hidden');
-            
-            if (forced) {
-                alert(`任務中斷！返回主選單。`);
-            } else {
-                alert(`任務達成！\n總分：${score}\n最高連擊：${maxCombo}`);
-            }
+            if (forced) alert(`遊戲中斷！`);
+            else alert(`太棒了！任務達成！\n得分：${score}\n最高連擊：${maxCombo}`);
             location.reload();
         }
 
-        function initAudio() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
+        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+
+        // 事件監聽 (支援多點觸控與滑鼠)
+        lanesDOM.forEach((lane, idx) => {
+            lane.addEventListener('pointerdown', (e) => { e.preventDefault(); handlePress(idx); });
+            lane.addEventListener('pointerup', (e) => { e.preventDefault(); handleRelease(idx); });
+            lane.addEventListener('pointerleave', (e) => { e.preventDefault(); handleRelease(idx); });
+        });
+
+        // 鍵盤支援 (按著不放也可以當作 Hold)
+        window.addEventListener('keydown', (e) => {
+            const keys = { 's':0, 'd':1, 'k':2, 'l':3 };
+            if (keys[e.key.toLowerCase()] !== undefined && !e.repeat) handlePress(keys[e.key.toLowerCase()]);
+        });
+        window.addEventListener('keyup', (e) => {
+            const keys = { 's':0, 'd':1, 'k':2, 'l':3 };
+            if (keys[e.key.toLowerCase()] !== undefined) handleRelease(keys[e.key.toLowerCase()]);
+        });
 
         startBtn.onclick = startGame;
         initUI();
