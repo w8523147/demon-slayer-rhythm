@@ -6,20 +6,20 @@
     <title>鋼琴塊模式 - 日輪之律</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&family=Noto+Serif+TC:wght@700;900&display=swap');
         
         :root { 
-            --tile-black: #111111;
-            --tile-active: #2dd4bf; /* 點擊時的亮藍綠色 */
-            --bg-top: #ffe6f2;      /* 背景粉色漸層 */
-            --bg-bottom: #ffb3d9;
-            --tile-long: #8b5cf6;   /* 長按音符的亮紫色 */
-            --tile-long-dark: #5b21b6; /* 長按音符的深紫色 */
+            --tile-black: #1a1a1a;
+            --tile-active: #2dd4bf;      /* 點擊長按時的亮藍綠色 */
+            --bg-top: #ffe6f2;           /* 櫻粉色漸層頂部 */
+            --bg-bottom: #ffb3d9;        /* 櫻粉色漸層底部 */
+            --tile-long: #8b5cf6;        /* 長按音符：魔幻亮紫色 */
+            --tile-long-dark: #4c1d95;   /* 長按音符底部：深紫色 */
         }
         
         body {
             background: linear-gradient(to bottom, var(--bg-top), var(--bg-bottom));
-            color: #333; font-family: 'Nunito', sans-serif;
+            color: #333; font-family: 'Noto Serif TC', serif;
             overflow: hidden; margin: 0; touch-action: none; user-select: none;
         }
 
@@ -27,110 +27,544 @@
         #play-area { 
             position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
             display: flex; max-width: 500px; margin: 0 auto;
-            background: rgba(255, 255, 255, 0.4);
-            box-shadow: 0 0 30px rgba(255, 105, 180, 0.3);
+            background: rgba(255, 255, 255, 0.35);
+            box-shadow: 0 0 40px rgba(255, 105, 180, 0.25);
+            border-left: 2px solid rgba(255,255,255,0.5);
+            border-right: 2px solid rgba(255,255,255,0.5);
         }
 
-        /* 四條軌道 */
+        /* 四條直向軌道 */
         .lane {
             flex: 1; position: relative; height: 100%;
-            border-right: 2px solid rgba(255,255,255,0.6);
+            border-right: 1px solid rgba(255,255,255,0.4);
+            transition: background 0.1s;
         }
         .lane:last-child { border-right: none; }
-        .lane.active { background: rgba(45, 212, 191, 0.1); } /* 點擊時軌道發光 */
+        .lane.active { background: rgba(45, 212, 191, 0.15); } 
 
-        /* 判定線 */
-        #hit-line {
-            position: absolute; bottom: 15vh; width: 100%; height: 4px;
-            background: rgba(0,0,0,0.1); z-index: 50; pointer-events: none;
-            border-top: 2px dashed rgba(255,255,255,0.8);
+        /* 底部判定區與提示按鈕 */
+        .lane-trigger {
+            position: absolute; bottom: 4vh; left: 5%; width: 90%;
+            height: 50px; border-radius: 25px;
+            background: rgba(255,255,255,0.7);
+            border: 2px solid rgba(255, 105, 180, 0.3);
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Nunito', sans-serif; font-weight: 900; color: #d946ef;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            pointer-events: none; z-index: 45;
+        }
+        .lane.active .lane-trigger {
+            background: var(--tile-active);
+            color: white; border-color: white;
+            box-shadow: 0 0 15px var(--tile-active);
+            transform: scale(0.95);
         }
 
-        /* 鋼琴方塊 (短按) */
+        /* 判定參考線 */
+        #hit-line {
+            position: absolute; bottom: 15vh; width: 100%; height: 4px;
+            background: rgba(0,0,0,0.08); z-index: 30; pointer-events: none;
+            border-top: 2px dashed rgba(255,255,255,0.6);
+        }
+
+        /* 鋼琴單擊方塊 (黑色) */
         .piano-tile {
             position: absolute; width: 100%; 
             background: var(--tile-black);
-            z-index: 40; will-change: transform;
-            border: 1px solid #000;
+            z-index: 20; will-change: transform;
+            border: 1px solid #111;
             box-sizing: border-box;
-            border-radius: 6px; 
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
 
-        /* 長按音符的特殊樣式 (紫色漸層與立體邊框) */
+        /* 鋼琴長按方塊 (紫色漸層 ＋ 立體亮色邊框) */
         .piano-tile.long-tile {
             background: linear-gradient(to bottom, var(--tile-long) 0%, var(--tile-long-dark) 100%);
-            border-left: 4px solid #c4b5fd;
-            border-right: 4px solid #c4b5fd;
-            border-bottom: 8px solid #4c1d95; 
-            box-shadow: inset 0 0 15px rgba(255,255,255,0.2); 
+            border: 3px solid #c4b5fd;
+            border-bottom: 8px solid #3b0764;
+            box-shadow: inset 0 0 15px rgba(255,255,255,0.3), 0 4px 12px rgba(139, 92, 246, 0.4);
         }
 
-        /* 按下的狀態 (科技亮藍綠色) */
+        /* 方塊被成功按住時的科技藍綠發光狀態 */
         .piano-tile.active {
-            background: var(--tile-active);
-            box-shadow: inset 0 0 20px rgba(255,255,255,0.8), 0 0 20px var(--tile-active);
-            border-color: #fff;
+            background: var(--tile-active) !important;
+            box-shadow: inset 0 0 20px rgba(255,255,255,0.8), 0 0 25px var(--tile-active) !important;
+            border-color: #fff !important;
         }
 
-        /* 點擊特效 (波紋) */
+        /* 點擊漣漪波紋 */
         .ripple {
             position: absolute; left: 50%; bottom: 15vh;
-            transform: translate(-50%, 50%); width: 100px; height: 100px;
-            background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(45,212,191,0) 70%);
+            transform: translate(-50%, 50%); width: 120px; height: 120px;
+            background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(45,212,191,0) 70%);
             border-radius: 50%; z-index: 60; pointer-events: none;
-            animation: ripple-anim 0.4s ease-out forwards;
+            animation: ripple-anim 0.35s ease-out forwards;
         }
         @keyframes ripple-anim {
-            0% { transform: translate(-50%, 50%) scale(0.5); opacity: 1; }
-            100% { transform: translate(-50%, 50%) scale(2); opacity: 0; }
+            0% { transform: translate(-50%, 50%) scale(0.3); opacity: 1; }
+            100% { transform: translate(-50%, 50%) scale(2.2); opacity: 0; }
         }
 
-        /* 判定文字 */
+        /* 判定文字 (Q版泡泡字體) */
         .local-judgement {
             position: absolute; transform: translate(-50%, -50%);
-            font-size: 2.5rem; font-weight: 900;
-            color: #d946ef; 
-            text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 0 4px 15px rgba(0,0,0,0.3);
+            font-family: 'Nunito', sans-serif; font-size: 2.8rem; font-weight: 900;
+            color: #e879f9;
+            text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 6px 15px rgba(217,70,239,0.4);
             z-index: 100; pointer-events: none;
-            animation: float-up 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            animation: float-up 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
         @keyframes float-up {
-            0% { opacity: 1; transform: translate(-50%, -50%) scale(0.5) rotate(-5deg); }
-            50% { transform: translate(-50%, -100%) scale(1.2) rotate(5deg); }
-            100% { opacity: 0; transform: translate(-50%, -150%) scale(1); }
+            0% { opacity: 1; transform: translate(-50%, -30%) scale(0.6) rotate(-8deg); }
+            50% { transform: translate(-50%, -80%) scale(1.1) rotate(5deg); }
+            100% { opacity: 0; transform: translate(-50%, -130%) scale(0.9); }
         }
 
-        /* UI 層 */
-        .glass-ui { background: rgba(255, 255, 255, 0.8); border: 2px solid #fff; box-shadow: 0 8px 32px rgba(255,105,180,0.2); border-radius: 12px; backdrop-filter: blur(8px); }
-        .diff-btn { border: 2px solid #ffb3d9; padding: 8px; font-size: 0.9rem; color: #d946ef; border-radius: 8px; transition: 0.2s; font-weight: 800; }
-        .diff-btn.active { background: #d946ef; color: #fff; border-color: #d946ef; }
+        .glass-ui { background: rgba(255, 255, 255, 0.85); border: 3px solid #fff; box-shadow: 0 10px 30px rgba(255,105,180,0.25); border-radius: 16px; backdrop-filter: blur(12px); }
+        .diff-btn { border: 2px solid #ffb3d9; padding: 10px; font-size: 0.95rem; color: #d946ef; border-radius: 10px; transition: 0.2s; font-weight: 900; }
+        .diff-btn.active { background: #d946ef; color: #fff; border-color: #d946ef; box-shadow: 0 4px 12px rgba(217,70,239,0.3); }
+        
+        .start-anim { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
     </style>
 </head>
 <body>
 
+    <!-- 遊戲主畫面 -->
     <div id="play-area">
-        <div class="lane" data-idx="0"></div>
-        <div class="lane" data-idx="1"></div>
-        <div class="lane" data-idx="2"></div>
-        <div class="lane" data-idx="3"></div>
+        <div class="lane" data-idx="0"><div class="lane-trigger">S</div></div>
+        <div class="lane" data-idx="1"><div class="lane-trigger">D</div></div>
+        <div class="lane" data-idx="2"><div class="lane-trigger">K</div></div>
+        <div class="lane" data-idx="3"><div class="lane-trigger">L</div></div>
         <div id="hit-line"></div>
     </div>
 
-    <div class="absolute top-4 left-4 z-50 pointer-events-none">
-        <div class="text-4xl font-black text-pink-500 drop-shadow-md" id="score-display">0</div>
-        <div class="text-lg font-bold text-teal-400 drop-shadow-md">COMBO <span id="combo-display">0</span></div>
+    <!-- 左上角儀表板 -->
+    <div class="absolute top-4 left-4 z-50 pointer-events-none select-none">
+        <div class="text-5xl font-black text-pink-600 drop-shadow-[0_2px_4px_rgba(255,255,255,0.8)]" id="score-display">0</div>
+        <div class="text-xl font-black text-teal-500 drop-shadow-[0_2px_4px_rgba(255,255,255,0.8)] mt-1">COMBO <span id="combo-display">0</span></div>
     </div>
 
+    <!-- 暫停按鈕 -->
     <div id="pause-btn-container" class="absolute top-4 right-4 z-50 hidden">
-        <button onclick="togglePause()" class="bg-white/80 text-pink-500 p-3 rounded-full shadow-lg font-black text-xl hover:bg-white active:scale-95 transition">
+        <button onclick="togglePause()" class="bg-white/90 text-pink-500 p-3.5 rounded-full shadow-lg font-black text-2xl hover:bg-white active:scale-90 hover:scale-105 transition-all">
             ⏸
         </button>
     </div>
 
+    <!-- 開始大廳選單 -->
     <div id="start-screen" class="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-black/60 p-6 text-center backdrop-blur-sm">
-        <h1 class="text-6xl font-black text-white drop-shadow-[0_4px_10px_rgba(255,105,180,0.8)] mb-8" style="-webkit-text-stroke: 2px #d946ef;">魔幻鋼琴塊</h1>
+        <h1 class="text-6xl font-black text-white drop-shadow-[0_4px_12px_rgba(255,105,180,0.9)] mb-8 font-serif" style="-webkit-text-stroke: 2px #d946ef;">魔幻鋼琴塊</h1>
 
         <div class="glass-ui p-6 w-full max-w-sm">
             <div class="mb-5 text-left">
-                <p class="text-pink-500 font-black mb-2">♪ 選擇歌曲</p>
-                <select id="song-select" class="bg-white border-2 border-pink-300 text-gray-700 text-lg p-3 w-full rounded-xl outline-none font-
+                <p class="text-pink-600 font-black text-base mb-2">♪ 選擇樂曲</p>
+                <select id="song-select" class="bg-white border-2 border-pink-300 text-gray-700 text-lg p-3 w-full rounded-xl outline-none font-bold shadow-inner focus:border-pink-500"></select>
+            </div>
+
+            <div class="mb-8 text-left">
+                <p class="text-pink-600 font-black text-base mb-2">★ 難度與速度</p>
+                <div class="flex justify-between gap-2">
+                    <button class="diff-btn active flex-1" onclick="setDiff('easy', this)">癸 (慢速)</button>
+                    <button class="diff-btn flex-1" onclick="setDiff('normal', this)">乙 (原速)</button>
+                    <button class="diff-btn flex-1" onclick="setDiff('hard', this)">柱 (快速)</button>
+                </div>
+            </div>
+
+            <button id="start-btn" disabled class="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white font-black py-4 rounded-xl text-2xl shadow-xl hover:scale-105 active:scale-95 transition-all">
+                召喚音律中...
+            </button>
+            <p id="audio-info" class="text-pink-600 text-xs mt-3 font-bold">請稍候...</p>
+        </div>
+    </div>
+
+    <!-- 暫停遮罩 -->
+    <div id="pause-screen" class="absolute inset-0 z-[250] flex flex-col items-center justify-center bg-black/80 p-8 text-center hidden backdrop-blur-md">
+        <h1 class="text-5xl font-black text-white mb-10 tracking-widest font-serif">全集中・暫停中</h1>
+        <button onclick="togglePause()" class="w-64 mb-4 bg-teal-400 text-white font-black py-4 rounded-xl text-2xl hover:bg-teal-300 shadow-lg hover:scale-105 active:scale-95 transition-transform">繼續任務</button>
+        <button onclick="endGame(true)" class="w-64 bg-gray-500 text-white font-black py-4 rounded-xl text-xl hover:bg-gray-400 hover:scale-105 active:scale-95 transition-transform">撤回主選單</button>
+    </div>
+
+    <audio id="bgm-player"></audio>
+
+    <script>
+        // --- 1. 曲目設定（包含本地相對路徑 ＋ 雲端備份路徑） ---
+        const SONGS = {
+            gurenge: {
+                title: "紅蓮華 (Piano Ver.)",
+                url: "bgm.mp3",  // 優先本地載入
+                backupUrl: "https://raw.githubusercontent.com/w8523147/demon-slayer-rhythm/main/bgm.mp3", // 線上備份
+                bpm: 135,
+                offset: 2200 
+            },
+            bibi: {
+                title: "小雞嗶嗶",
+                url: "BiBi.mp3", // 優先本地載入
+                backupUrl: "https://github.com/w8523147/demon-slayer-rhythm/raw/refs/heads/main/BiBi.mp3", // 線上備份
+                bpm: 130,
+                offset: 1000 
+            }
+        };
+
+        const CONFIG = {
+            easy: { speedRate: 0.8, leadTime: 2500 },    // 慢速：方塊耗時 2.5 秒落地，非常適合孩童
+            normal: { speedRate: 1.0, leadTime: 1800 },  // 正常速度
+            hard: { speedRate: 1.3, leadTime: 1200 }     // 快速 1.3 倍
+        };
+
+        let currentSongKey = "gurenge";
+        let currentLevel = 'easy';
+        let isPlaying = false;
+        let isPaused = false; 
+        let score = 0, combo = 0, maxCombo = 0;
+        let audioCtx;
+        let gameChart = [];
+        let pxPerMs = 0;
+        let isSynthMode = false; // 是否進入無音樂電子音備用模式
+        let synthStartTime = 0;
+
+        const playArea = document.getElementById('play-area');
+        const lanesDOM = Array.from(document.querySelectorAll('.lane'));
+        const bgm = document.getElementById('bgm-player');
+        const startBtn = document.getElementById('start-btn');
+        const audioInfo = document.getElementById('audio-info');
+
+        // --- 2. 智慧音訊載入與容錯防禦機制 ---
+        const initUI = () => {
+            const select = document.getElementById('song-select');
+            select.innerHTML = Object.keys(SONGS).map(k => `<option value="${k}">${SONGS[k].title}</option>`).join('');
+            select.onchange = (e) => { currentSongKey = e.target.value; loadMusic(); };
+        };
+
+        const loadMusic = () => {
+            startBtn.disabled = true;
+            startBtn.innerText = "載入音樂中...";
+            startBtn.classList.remove('start-anim');
+            isSynthMode = false;
+            
+            // 嘗試載入本地路徑
+            bgm.src = SONGS[currentSongKey].url; 
+            bgm.load();
+            
+            bgm.oncanplaythrough = () => {
+                enableStartButton("準備就緒 ♪ (本地音源)");
+            };
+
+            bgm.onerror = () => {
+                console.warn(`[本地音源讀取失敗] 嘗試切換到 GitHub 備份連結: ${SONGS[currentSongKey].backupUrl}`);
+                
+                // 本地失敗，自動切換至雲端備援網址
+                bgm.src = SONGS[currentSongKey].backupUrl;
+                bgm.load();
+                
+                bgm.oncanplaythrough = () => {
+                    enableStartButton("準備就緒 ♪ (線上音源)");
+                };
+                
+                bgm.onerror = () => {
+                    console.error("[所有音訊讀取失敗] 開啟電子音備份遊玩模式");
+                    isSynthMode = true;
+                    enableStartButton("準備就緒 ♪ (全集中合成音模式)");
+                };
+            };
+        };
+
+        const enableStartButton = (msg) => {
+            startBtn.disabled = false;
+            startBtn.classList.add('start-anim');
+            startBtn.innerText = "開始挑戰！";
+            audioInfo.innerText = msg;
+        };
+
+        function setDiff(level, btn) {
+            currentLevel = level;
+            document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        function togglePause() {
+            if (!isPlaying) return;
+            isPaused = !isPaused;
+            const pauseScreen = document.getElementById('pause-screen');
+            if (isPaused) { 
+                if (!isSynthMode) bgm.pause(); 
+                pauseScreen.classList.remove('hidden'); 
+            } else { 
+                if (!isSynthMode) bgm.play(); 
+                pauseScreen.classList.add('hidden'); 
+            }
+        }
+
+        // --- 3. 鋼琴塊譜面引擎 (保證短音符與長音符均勻分配) ---
+        const generatePianoChart = (duration) => {
+            const chart = [];
+            const song = SONGS[currentSongKey];
+            const beatInterval = (60 / song.bpm) * 1000;
+            let nextFreeTime = [0, 0, 0, 0]; 
+
+            for (let t = song.offset; t < (duration * 1000) - 2000; t += (beatInterval / 2)) {
+                if(Math.random() < 0.25) continue; // 稍微稀釋密度，避免畫面過擠
+
+                // 25% 的機率生成為「亮紫色長按音符」
+                let isLong = Math.random() > 0.75;
+                let noteDuration = isLong ? beatInterval * (1.2 + Math.random() * 0.8) : 0;
+
+                // 尋找空閒的軌道
+                let availableLanes = [0, 1, 2, 3].filter(l => nextFreeTime[l] <= t);
+                if (availableLanes.length === 0) continue; 
+
+                let lane = availableLanes[Math.floor(Math.random() * availableLanes.length)];
+
+                chart.push({ 
+                    time: t, 
+                    type: isLong ? 'long' : 'short', 
+                    duration: noteDuration, 
+                    lane: lane, 
+                    spawned: false, 
+                    hit: false, 
+                    missed: false,
+                    holding: false,
+                    element: null 
+                });
+
+                nextFreeTime[lane] = t + noteDuration + 120; // 鎖定該軌道
+            }
+            return chart;
+        };
+
+        // --- 4. 遊戲主循環與精確位移渲染 ---
+        function startGame() {
+            // 啟用解鎖 Web Audio API 鋼琴點擊音效
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('pause-btn-container').classList.remove('hidden');
+            document.querySelectorAll('.piano-tile').forEach(e => e.remove());
+            
+            score = 0; combo = 0; isPaused = false; updateUI();
+            
+            const songDuration = isSynthMode ? 120 : bgm.duration;
+            gameChart = generatePianoChart(songDuration || 180);
+            isPlaying = true;
+
+            if (!isSynthMode) {
+                bgm.playbackRate = CONFIG[currentLevel].speedRate;
+                bgm.preservesPitch = true;
+                bgm.play();
+            } else {
+                synthStartTime = performance.now();
+            }
+
+            function frame() {
+                if (!isPlaying) return;
+                if (isPaused) { requestAnimationFrame(frame); return; }
+
+                // 獲取絕對毫秒時間
+                let currentTime = 0;
+                if (!isSynthMode) {
+                    currentTime = bgm.currentTime * 1000;
+                } else {
+                    currentTime = (performance.now() - synthStartTime) * CONFIG[currentLevel].speedRate;
+                }
+
+                const leadTime = CONFIG[currentLevel].leadTime;
+                const hitZoneY = window.innerHeight * 0.85; 
+                pxPerMs = hitZoneY / leadTime;
+                const baseHeight = window.innerHeight * 0.18; // 調成舒服的大方塊比例
+
+                gameChart.forEach(note => {
+                    // 1. 提早生成方塊，使其在頂部落下
+                    if (!note.spawned && currentTime >= (note.time - leadTime - note.duration)) {
+                        spawnTile(note);
+                    }
+
+                    if (note.spawned && note.element && !note.missed) {
+                        // 2. 核心公式：計算當前位置
+                        let bottomY = hitZoneY - (note.time - currentTime) * pxPerMs;
+                        let height = note.type === 'long' ? baseHeight + (note.duration * pxPerMs) : baseHeight;
+                        let topY = bottomY - height;
+
+                        note.element.style.height = `${height}px`;
+                        note.element.style.transform = `translateY(${topY}px)`;
+
+                        // 3. 處理按住（Holding）狀態的長按條
+                        if (note.holding) {
+                            score += 1; // 隨著按住幀數持續狂飆分數
+                            updateUI();
+                            // 長按完畢判定（當方塊頂端滑過判定線時）
+                            if (topY >= hitZoneY) {
+                                note.holding = false;
+                                note.hit = true;
+                                combo++; if (combo > maxCombo) maxCombo = combo;
+                                showJudgement(note.lane, "PERFECT!");
+                                note.element.remove();
+                                playPianoSound(note.lane, 523.25); // 結尾和弦高音
+                            }
+                        } 
+                        // 4. MISS 判定邏輯
+                        else if (!note.hit) {
+                            if (bottomY > hitZoneY + 250) {
+                                note.missed = true;
+                                combo = 0; updateUI();
+                                note.element.style.opacity = '0.3';
+                                // 晃動螢幕視覺反饋
+                                document.body.style.transform = "translateX(6px)";
+                                setTimeout(() => document.body.style.transform = "none", 60);
+                            }
+                        }
+                    }
+                });
+
+                if (!isSynthMode && bgm.ended) endGame();
+                if (isSynthMode && currentTime > songDuration * 1000) endGame();
+                
+                requestAnimationFrame(frame);
+            }
+            requestAnimationFrame(frame);
+        }
+
+        // --- 5. 繪製與打擊反饋 ---
+        function spawnTile(noteData) {
+            const div = document.createElement('div');
+            // 如果是長按，加入專屬的紫色 CSS 類別
+            div.className = `piano-tile ${noteData.type === 'long' ? 'long-tile' : ''}`;
+            div.style.transform = `translateY(-1000px)`; 
+            
+            lanesDOM[noteData.lane].appendChild(div);
+            noteData.element = div;
+            noteData.spawned = true;
+        }
+
+        // 手指或滑鼠按下
+        function handlePress(laneIdx) {
+            if (!isPlaying || isPaused) return;
+            initAudioCtx();
+
+            lanesDOM[laneIdx].classList.add('active');
+            const currentTime = isSynthMode ? (performance.now() - synthStartTime) * CONFIG[currentLevel].speedRate : bgm.currentTime * 1000;
+            
+            let activeNotes = gameChart.filter(n => n.lane === laneIdx && n.spawned && !n.hit && !n.missed && !n.holding);
+            if (activeNotes.length === 0) return;
+
+            // 抓取最下方的方塊
+            let targetNote = activeNotes.reduce((prev, curr) => Math.abs(curr.time - currentTime) < Math.abs(prev.time - currentTime) ? curr : prev);
+
+            // 超友善判定寬容區間 (400ms)
+            if (Math.abs(currentTime - targetNote.time) < 400) {
+                createRipple(laneIdx);
+                
+                // 本地合成鋼琴音效 (點擊時絕對會響起，回饋感拉滿！)
+                const freqs = [261.63, 293.66, 329.63, 349.23];
+                playPianoSound(laneIdx, freqs[laneIdx]);
+
+                if (targetNote.type === 'short') {
+                    targetNote.hit = true;
+                    score += 50; combo++; if (combo > maxCombo) maxCombo = combo;
+                    showJudgement(laneIdx, "PERFECT");
+                    targetNote.element.style.transform = `${targetNote.element.style.transform} scale(1.05)`;
+                    targetNote.element.style.opacity = '0';
+                    setTimeout(() => targetNote.element.remove(), 150);
+                } else {
+                    targetNote.holding = true;
+                    targetNote.element.classList.add('active'); // 變更顏色為亮藍綠色
+                    showJudgement(laneIdx, "HOLDING");
+                }
+                updateUI();
+            }
+        }
+
+        // 手指或滑鼠鬆開
+        function handleRelease(laneIdx) {
+            lanesDOM[laneIdx].classList.remove('active');
+            
+            let holdingNote = gameChart.find(n => n.lane === laneIdx && n.holding);
+            if (holdingNote) {
+                holdingNote.holding = false;
+                holdingNote.hit = true; 
+                holdingNote.element.style.opacity = '0.5';
+                setTimeout(() => holdingNote.element.remove(), 300);
+            }
+        }
+
+        // 點擊波紋特效
+        function createRipple(laneIdx) {
+            const effect = document.createElement('div');
+            effect.className = 'ripple';
+            lanesDOM[laneIdx].appendChild(effect);
+            setTimeout(() => effect.remove(), 350);
+        }
+
+        // 泡泡判定文字
+        function showJudgement(laneIdx, txt) {
+            const el = document.createElement('div');
+            el.className = 'local-judgement';
+            el.style.left = '50%';
+            el.style.top = '85%';
+            el.innerText = txt;
+            lanesDOM[laneIdx].appendChild(el);
+            setTimeout(() => el.remove(), 400);
+        }
+
+        // 合成器振盪器發聲
+        function playPianoSound(laneIdx, freq) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.35);
+        }
+
+        function updateUI() {
+            document.getElementById('score-display').innerText = score;
+            document.getElementById('combo-display').innerText = combo;
+        }
+
+        function endGame(forced = false) {
+            isPlaying = false;
+            bgm.pause();
+            document.getElementById('pause-btn-container').classList.add('hidden');
+            if (forced) {
+                alert(`任務中斷，返回主選單。`);
+                location.reload();
+            } else {
+                alert(`挑戰成功！\n最終得分：${score}\n最高連擊：${maxCombo}`);
+                location.reload();
+            }
+        }
+
+        function initAudioCtx() { 
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); 
+        }
+
+        // --- 6. 事件監聽設定 ---
+        lanesDOM.forEach((lane, idx) => {
+            lane.addEventListener('pointerdown', (e) => { e.preventDefault(); handlePress(idx); });
+            lane.addEventListener('pointerup', (e) => { e.preventDefault(); handleRelease(idx); });
+            lane.addEventListener('pointerleave', (e) => { e.preventDefault(); handleRelease(idx); });
+        });
+
+        window.addEventListener('keydown', (e) => {
+            const keys = { 's':0, 'd':1, 'k':2, 'l':3 };
+            if (keys[e.key.toLowerCase()] !== undefined && !e.repeat) handlePress(keys[e.key.toLowerCase()]);
+            if (e.key === "Escape" && isPlaying) togglePause();
+        });
+        window.addEventListener('keyup', (e) => {
+            const keys = { 's':0, 'd':1, 'k':2, 'l':3 };
+            if (keys[e.key.toLowerCase()] !== undefined) handleRelease(keys[e.key.toLowerCase()]);
+        });
+
+        startBtn.onclick = startGame;
+        initUI();
+        loadMusic();
+
+    </script>
+</body>
+</html>
