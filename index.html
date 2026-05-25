@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>鋼琴塊模式 - 日輪之律</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -20,7 +20,10 @@
         body {
             background: linear-gradient(to bottom, var(--bg-top), var(--bg-bottom));
             color: #333; font-family: 'Noto Serif TC', serif;
-            overflow: hidden; margin: 0; touch-action: none; user-select: none;
+            overflow: hidden; margin: 0; padding: 0;
+            user-select: none;
+            -webkit-user-select: none;   /* 阻止 iOS Safari 長按選取文字 */
+            touch-action: none;          /* 阻止瀏覽器預設的拖曳與滾動行為 */
         }
 
         /* 遊戲區域大外框（包含側邊欄） */
@@ -31,6 +34,8 @@
             width: 100vw;
             height: 100vh;
             padding: 0 20px;
+            box-sizing: border-box;
+            touch-action: none;          /* 鎖定外框縮放手勢 */
         }
 
         /* 遊戲主舞台 */
@@ -43,6 +48,7 @@
             border-left: 2px solid rgba(255,255,255,0.5);
             border-right: 2px solid rgba(255,255,255,0.5);
             overflow: hidden;
+            touch-action: none;          /* 核心：完全禁用此區塊的瀏覽器預設縮放手勢 */
         }
 
         /* 四條直向軌道 */
@@ -50,6 +56,7 @@
             flex: 1; position: relative; height: 100%;
             border-right: 1px solid rgba(255,255,255,0.4);
             transition: background 0.1s;
+            touch-action: none;          /* 禁用單條軌道的觸控手勢 */
         }
         .lane:last-child { border-right: none; }
         .lane.active { background: rgba(45, 212, 191, 0.15); } 
@@ -91,6 +98,7 @@
             border-radius: 16px;                 /* 圓角化提升視覺獨立感 */
             box-shadow: 0 8px 16px rgba(0,0,0,0.5), inset 0 0 10px rgba(255,255,255,0.1);
             overflow: hidden;                    /* 確保內嵌元素不會超出圓角 */
+            transition: opacity 0.15s ease-out, transform 0.15s ease-out; /* 讓點擊後的消失更滑順 */
         }
 
         /* 鋼琴長按方塊 (紫色漸層 ＋ 白色強對比框 ＋ 霓虹紫裝飾線) */
@@ -102,6 +110,7 @@
             box-shadow: inset 0 0 15px rgba(255,255,255,0.3), 0 8px 18px rgba(139, 92, 246, 0.45);
             border-radius: 16px;
             overflow: hidden;
+            transition: opacity 0.2s ease-out;
         }
 
         /* 方塊被成功按住時的科技藍綠發光狀態 */
@@ -303,7 +312,7 @@
     <audio id="bgm-player"></audio>
 
     <script>
-        // --- 1. 曲目設定（包含本機相對路徑 ＋ 雲端備份路徑，並成功加入新歌 How It's Done） ---
+        // --- 1. 曲目設定 ---
         const SONGS = {
             gurenge: {
                 title: "紅蓮華 (Piano Ver.)",
@@ -520,8 +529,6 @@
                     currentTime = (performance.now() - synthStartTime) * CONFIG[currentLevel].speedRate;
                 }
 
-                const Math_max = Math.max;
-                const Math_min = Math.min;
                 const leadTime = CONFIG[currentLevel].leadTime;
                 const hitZoneY = window.innerHeight * 0.85; 
                 pxPerMs = hitZoneY / leadTime;
@@ -532,7 +539,7 @@
                         spawnTile(note);
                     }
 
-                    if (note.spawned && note.element && !note.missed) {
+                    if (note.spawned && note.element && !note.missed && !note.hit) {
                         let bottomY = hitZoneY - (note.time - currentTime) * pxPerMs;
                         let height = note.type === 'long' ? baseHeight + (note.duration * pxPerMs) : baseHeight;
                         let topY = bottomY - height;
@@ -545,18 +552,28 @@
                             updateUI();
                             if (topY >= hitZoneY) {
                                 note.holding = false;
-                                note.hit = true;
+                                note.hit = true; 
                                 combo++; if (combo > maxCombo) maxCombo = combo;
                                 showJudgement(note.lane, "PERFECT!");
-                                note.element.remove();
+                                note.element.style.opacity = '0';
+                                setTimeout(() => { if (note.element) note.element.remove(); }, 150);
                                 playPianoSound(note.lane, 523.25); 
                             }
                         } 
-                        else if (!note.hit) {
+                        else {
                             if (bottomY > hitZoneY + 250) {
-                                note.missed = true;
+                                note.missed = true; 
                                 combo = 0; updateUI();
                                 note.element.style.opacity = '0.3';
+                                note.element.style.transform += ' scale(0.9)';
+                                
+                                const tempElement = note.element;
+                                setTimeout(() => { 
+                                    if (tempElement && tempElement.parentNode) {
+                                        tempElement.remove(); 
+                                    }
+                                }, 500);
+
                                 document.body.style.transform = "translateX(6px)";
                                 setTimeout(() => document.body.style.transform = "none", 60);
                             }
@@ -628,12 +645,15 @@
                 playPianoSound(laneIdx, freqs[laneIdx]);
 
                 if (targetNote.type === 'short') {
-                    targetNote.hit = true;
+                    targetNote.hit = true; 
                     score += 50; combo++; if (combo > maxCombo) maxCombo = combo;
                     showJudgement(laneIdx, "PERFECT");
-                    targetNote.element.style.transform = `${targetNote.element.style.transform} scale(1.05)`;
+                    
+                    targetNote.element.style.transform += " scale(1.15)";
                     targetNote.element.style.opacity = '0';
-                    setTimeout(() => targetNote.element.remove(), 150);
+                    
+                    const tempElement = targetNote.element;
+                    setTimeout(() => { if (tempElement) tempElement.remove(); }, 150);
                 } else {
                     targetNote.holding = true;
                     targetNote.element.classList.add('active'); 
@@ -643,7 +663,6 @@
             }
         }
 
-        // 手指或滑鼠鬆開
         function handleRelease(laneIdx) {
             lanesDOM[laneIdx].classList.remove('active');
             
@@ -651,8 +670,10 @@
             if (holdingNote) {
                 holdingNote.holding = false;
                 holdingNote.hit = true; 
-                holdingNote.element.style.opacity = '0.5';
-                setTimeout(() => holdingNote.element.remove(), 300);
+                holdingNote.element.style.opacity = '0';
+                
+                const tempElement = holdingNote.element;
+                setTimeout(() => { if (tempElement) tempElement.remove(); }, 200);
             }
         }
 
@@ -724,6 +745,28 @@
         function initAudioCtx() { 
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); 
         }
+
+        // --- 8. 手機版防止雙擊放大與雙指縮放安全鎖 (iOS & Android 終極守護) ---
+        (function() {
+            const playAreaDOM = document.getElementById('play-area');
+            let lastTouchTime = 0;
+
+            // 阻止遊戲點擊區域內的雙擊縮放
+            playAreaDOM.addEventListener('touchend', function(e) {
+                const now = Date.now();
+                if (now - lastTouchTime <= 300) {
+                    e.preventDefault(); // 強行阻止瀏覽器的連點縮放預設行為
+                }
+                lastTouchTime = now;
+            }, { passive: false });
+
+            // 阻止遊戲點擊區域內的雙指縮放手勢 (Pinch-to-zoom)
+            playAreaDOM.addEventListener('touchstart', function(e) {
+                if (e.touches.length > 1) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+        })();
 
         startBtn.onclick = startGame;
         initUI();
